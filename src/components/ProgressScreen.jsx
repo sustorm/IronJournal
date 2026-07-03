@@ -92,7 +92,7 @@ function ProgressScreen({ sessions, onBack, onDeleteSession }) {
             <div
               key={s.id || i}
               className="hist-row"
-              onTouchStart={() => startLongPress(s)}
+              onTouchStart={e => { e.preventDefault(); startLongPress(s); }}
               onTouchEnd={cancelLongPress}
               onTouchMove={cancelLongPress}
               onContextMenu={e => { e.preventDefault(); setConfirmDelete(s); }}

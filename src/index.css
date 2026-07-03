@@ -199,7 +199,7 @@ body {
 .vol-week-val { font-size: var(--fs-sm); color: var(--text); font-weight: 500; }
 .vol-bar-wrap { width: 52px; height: 4px; background: var(--faint); border-radius: 2px; margin-top: 2px; }
 .vol-bar { height: 4px; border-radius: 2px; background: var(--accent); transition: width .4s; }
-.hist-row { display: flex; justify-content: space-between; align-items: center; padding: 14px 16px; border-bottom: 1px solid var(--faint); font-size: var(--fs-sm); min-height: var(--touch); }
+.hist-row { display: flex; justify-content: space-between; align-items: center; padding: 14px 16px; border-bottom: 1px solid var(--faint); font-size: var(--fs-sm); min-height: var(--touch); -webkit-user-select: none; user-select: none; }
 .hist-row:last-child { border-bottom: none; }
 .hist-empty { padding: 16px; color: var(--muted); font-size: var(--fs-sm); }
 
