@@ -183,6 +183,16 @@ export default function App() {
     const newSessions = [entry, ...sessions].slice(0, 60);
     setSessions(newSessions);
     storage.setSessions(newSessions);
+
+    // Reset reps to 0 but keep weights so the next session starts fresh
+    const resetDay = {};
+    Object.entries(entry.sets).forEach(([exId, rows]) => {
+      resetDay[exId] = rows.map(r => ({ ...r, reps: 0 }));
+    });
+    const resetData = { ...setData, [d.id]: resetDay };
+    setSetData(resetData);
+    storage.setSets(resetData);
+
     showToast(`${d.name} saved!`);
     if (isDebugMode) return;
     const { data: inserted, error } = await sb.from('sessions').insert({
