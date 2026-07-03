@@ -251,8 +251,8 @@ body {
 .quick-prompts { padding: 8px 12px; border-top: 1px solid var(--border); display: flex; gap: 6px; flex-wrap: wrap; }
 .qp { min-height: 34px; padding: 0 11px; background: transparent; border: 1px solid var(--border); color: var(--muted); font-family: 'DM Mono', monospace; font-size: var(--fs-xs); border-radius: 20px; cursor: pointer; display: flex; align-items: center; }
 .qp:active { background: var(--faint); }
-.chat-input-row { display: flex; gap: 8px; padding: 10px; border-top: 1px solid var(--border); align-items: center; }
-.chat-input { flex: 1; background: var(--bg); border: 1px solid var(--border); color: var(--text); padding: 11px 13px; border-radius: 8px; font-size: var(--fs-base); font-family: 'DM Mono', monospace; outline: none; min-height: var(--touch); }
+.chat-input-row { display: flex; gap: 8px; padding: 10px; border-top: 1px solid var(--border); align-items: flex-end; }
+.chat-input { flex: 1; background: var(--bg); border: 1px solid var(--border); color: var(--text); padding: 11px 13px; border-radius: 8px; font-size: var(--fs-base); font-family: 'DM Mono', monospace; outline: none; min-height: var(--touch); resize: none; overflow: hidden; line-height: 1.5; }
 .chat-input::placeholder { color: var(--muted); }
 .send-btn { min-width: var(--touch); min-height: var(--touch); padding: 0 16px; background: var(--accent); color: #080810; border: none; border-radius: 8px; font-size: 18px; cursor: pointer; font-weight: 700; transition: opacity .2s; display: flex; align-items: center; justify-content: center; }
 .send-btn:disabled { opacity: .35; }

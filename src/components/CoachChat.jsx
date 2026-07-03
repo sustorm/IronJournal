@@ -47,6 +47,7 @@ export default function CoachChat({ currentDay, allDays, setData, onApplyChange 
   const [typing, setTyping] = useState(false);
   const [input, setInput] = useState('');
   const msgsRef = useRef(null);
+  const inputRef = useRef(null);
 
   useEffect(() => {
     if (open && msgsRef.current) {
@@ -81,6 +82,7 @@ export default function CoachChat({ currentDay, allDays, setData, onApplyChange 
     const text = override || input.trim();
     if (!text) return;
     setInput('');
+    if (inputRef.current) { inputRef.current.style.height = 'auto'; }
 
     const ctx = buildLogCtx();
     const userContent = `[Context:\n${ctx}]\n${text}`;
@@ -153,12 +155,20 @@ export default function CoachChat({ currentDay, allDays, setData, onApplyChange 
           ))}
         </div>
         <div className="chat-input-row">
-          <input
+          <textarea
+            ref={inputRef}
             className="chat-input"
             placeholder="Ask about weights, form, or program changes…"
             value={input}
-            onChange={e => setInput(e.target.value)}
-            onKeyDown={e => e.key === 'Enter' && send()}
+            rows={1}
+            onChange={e => {
+              setInput(e.target.value);
+              e.target.style.height = 'auto';
+              e.target.style.height = e.target.scrollHeight + 'px';
+            }}
+            onKeyDown={e => {
+              if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(); }
+            }}
           />
           <button className="send-btn" onClick={() => send()} disabled={typing}>→</button>
         </div>
