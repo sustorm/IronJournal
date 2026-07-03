@@ -185,13 +185,33 @@ export default function App() {
     storage.setSessions(newSessions);
     showToast(`${d.name} saved!`);
     if (isDebugMode) return;
-    const { error } = await sb.from('sessions').insert({
+    const { data: inserted, error } = await sb.from('sessions').insert({
       day_name: entry.day, day_id: entry.dayId, color: entry.color,
       date: entry.date, time: entry.time, week_key: entry.weekKey,
       sets: entry.sets, exercises: entry.exercises,
-    });
+    }).select('id').single();
     if (error) { console.warn('Session sync failed:', error.message); setSyncStatus('err', 'sync failed'); }
-    else setSyncStatus('ok', '✓ saved');
+    else {
+      setSyncStatus('ok', '✓ saved');
+      if (inserted?.id) {
+        setSessions(prev => {
+          const updated = prev.map(s => s.id === entry.id ? { ...s, id: inserted.id } : s);
+          storage.setSessions(updated);
+          return updated;
+        });
+      }
+    }
+  }
+
+  async function deleteSession(sessionId) {
+    const updated = sessions.filter(s => s.id !== sessionId);
+    setSessions(updated);
+    storage.setSessions(updated);
+    if (!isDebugMode) {
+      const { error } = await sb.from('sessions').delete().eq('id', sessionId);
+      if (error) console.warn('Session delete failed:', error.message);
+    }
+    showToast('Session deleted');
   }
 
   // ── Navigation ──
@@ -439,6 +459,7 @@ export default function App() {
           <ProgressScreen
             sessions={sessions}
             onBack={() => showScreen('log')}
+            onDeleteSession={deleteSession}
           />
         </div>
       )}

@@ -1,7 +1,17 @@
-import { memo } from 'react';
+import { memo, useRef, useState } from 'react';
 import ExerciseProgressChart from './ExerciseProgressChart.jsx';
 
-function ProgressScreen({ sessions, onBack }) {
+function ProgressScreen({ sessions, onBack, onDeleteSession }) {
+  const [confirmDelete, setConfirmDelete] = useState(null); // session object to delete
+  const longPressTimer = useRef(null);
+
+  function startLongPress(session) {
+    longPressTimer.current = setTimeout(() => setConfirmDelete(session), 500);
+  }
+
+  function cancelLongPress() {
+    clearTimeout(longPressTimer.current);
+  }
   const volMap = {};
   sessions.forEach(sess => {
     (sess.exercises || []).forEach(exRef => {
@@ -79,13 +89,33 @@ function ProgressScreen({ sessions, onBack }) {
           <div className="hist-empty">No sessions saved yet.</div>
         ) : (
           sessions.map((s, i) => (
-            <div key={s.id || i} className="hist-row">
+            <div
+              key={s.id || i}
+              className="hist-row"
+              onTouchStart={() => startLongPress(s)}
+              onTouchEnd={cancelLongPress}
+              onTouchMove={cancelLongPress}
+              onContextMenu={e => { e.preventDefault(); setConfirmDelete(s); }}
+            >
               <span style={{ color: s.color }}>{s.day}</span>
               <span style={{ color: 'var(--muted)' }}>{s.date} · {s.time}</span>
             </div>
           ))
         )}
       </div>
+      {confirmDelete && (
+        <div className="modal-overlay open" style={{ alignItems: 'center' }} onClick={() => setConfirmDelete(null)}>
+          <div className="modal-box" onClick={e => e.stopPropagation()}>
+            <div className="modal-title">Delete session?</div>
+            <div className="modal-sub" style={{ color: confirmDelete.color }}>{confirmDelete.day}</div>
+            <div className="modal-sub">{confirmDelete.date} · {confirmDelete.time}</div>
+            <div className="modal-actions">
+              <button className="modal-btn modal-btn-cancel" onClick={() => setConfirmDelete(null)}>Cancel</button>
+              <button className="modal-btn modal-btn-delete" onClick={() => { onDeleteSession(confirmDelete.id); setConfirmDelete(null); }}>Delete</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
