@@ -354,6 +354,8 @@ export default function App() {
         newProg.days.push({ id: duid(), color: DAY_COLORS[newProg.days.length % DAY_COLORS.length], exercises: [], ...data });
       } else if (action === 'remove_day' && day) {
         newProg.days = newProg.days.filter(d => d.id !== dayId);
+      } else if (action === 'set_day_exercises' && day) {
+        day.exercises = (data.exercises || []).map(ex => ({ id: uid(), ...ex }));
       }
 
       storage.setProgram(newProg);
@@ -361,7 +363,7 @@ export default function App() {
     });
 
     // Navigate to the affected day so the change is immediately visible.
-    if (['add_exercise', 'remove_exercise', 'update_exercise', 'rename_day'].includes(action)) {
+    if (['add_exercise', 'remove_exercise', 'update_exercise', 'rename_day', 'set_day_exercises'].includes(action)) {
       setCurrentDayId(targetDayId);
       setCurrentScreen('log');
     } else if (action === 'remove_day') {
@@ -373,7 +375,7 @@ export default function App() {
     const toastMap = {
       add_exercise: 'Exercise added', remove_exercise: 'Exercise removed',
       update_exercise: 'Exercise updated', rename_day: 'Day renamed',
-      add_day: 'Day added', remove_day: 'Day removed',
+      add_day: 'Day added', remove_day: 'Day removed', set_day_exercises: 'Program updated',
     };
     if (toastMap[action]) showToast(toastMap[action]);
 

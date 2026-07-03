@@ -55,24 +55,25 @@ export default function CoachChat({ currentDay, allDays, setData, onApplyChange 
   }, [msgs, open, typing]);
 
   function buildLogCtx() {
-    // Always include the day ID map so the AI can use correct IDs in program_change blocks
-    let ctx = 'Program days (use these exact IDs in program_change JSON):\n';
+    let ctx = 'Full program (use these exact day IDs in program_change JSON):\n';
     (allDays || []).forEach(d => {
-      ctx += `  ${d.id}: ${d.name}${d.focus ? ` — ${d.focus}` : ''}\n`;
+      ctx += `\n${d.id}: ${d.name}${d.focus ? ` — ${d.focus}` : ''}\n`;
+      (d.exercises || []).forEach(ex => {
+        ctx += `  - ${ex.name} (${ex.sets}×${ex.reps}${ex.note ? ', ' + ex.note : ''})\n`;
+      });
     });
 
     if (!currentDay) return ctx;
     const ds = setData[currentDay.id];
     if (!ds) return ctx;
 
-    ctx += `\nCurrent session: ${currentDay.name} (${currentDay.focus || ''})\n`;
-    currentDay.exercises.forEach(ex => {
+    const loggedRows = currentDay.exercises.flatMap(ex => {
       const rows = (ds[ex.id] || []).filter(r => r.reps > 0);
-      if (!rows.length) return;
-      ctx += `- ${ex.name}: ` +
-        rows.map((r, i) => `Set${i + 1} ${r.weight ? r.weight + 'lbs' : 'bw'}×${r.reps}`).join(', ') +
-        ` (target ${ex.sets}×${ex.reps})\n`;
+      return rows.length ? [`- ${ex.name}: ` + rows.map((r, i) => `Set${i + 1} ${r.weight ? r.weight + 'lbs' : 'bw'}×${r.reps}`).join(', ') + ` (target ${ex.sets}×${ex.reps})`] : [];
     });
+    if (loggedRows.length) {
+      ctx += `\nLogged sets today (${currentDay.name}):\n` + loggedRows.join('\n') + '\n';
+    }
     return ctx;
   }
 
@@ -103,12 +104,14 @@ export default function CoachChat({ currentDay, allDays, setData, onApplyChange 
       return;
     }
 
-    // Parse program_change block separately so a malformed JSON doesn't swallow the reply
+    // Parse program_change block — normalize to array so handleApply is uniform
     let change = null;
     const match = reply.match(/<program_change>([\s\S]*?)<\/program_change>/);
     if (match) {
-      try { change = JSON.parse(match[1].trim()); }
-      catch (e) { console.warn('Could not parse program_change JSON:', e); }
+      try {
+        const parsed = JSON.parse(match[1].trim());
+        change = Array.isArray(parsed) ? parsed : [parsed];
+      } catch (e) { console.warn('Could not parse program_change JSON:', e); }
     }
 
     setPendingChange(change);
@@ -118,7 +121,7 @@ export default function CoachChat({ currentDay, allDays, setData, onApplyChange 
 
   function handleApply() {
     if (!pendingChange) return;
-    onApplyChange(pendingChange);
+    pendingChange.forEach(c => onApplyChange(c));
     setPendingChange(null);
   }
 
