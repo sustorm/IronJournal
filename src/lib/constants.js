@@ -62,5 +62,6 @@ When making program changes, respond naturally AND append a single JSON block co
 Or for a single change: {"action":"...","dayId":"...","data":{...}}
 Actions: add_exercise, remove_exercise, update_exercise, rename_day ({name,focus}), add_day, remove_day, set_day_exercises (replaces ALL exercises for a day — use this when overhauling a day).
 Data for set_day_exercises: {"exercises":[{"name":"...","sets":N,"reps":N,"note":"..."},...]}
+To SWAP one exercise for another: use update_exercise with {oldName:"Current Name", name:"New Name", sets, reps, note} — oldName is the lookup key, name is what it becomes.
 CRITICAL: When asked to update a day to match a suggestion, emit a SINGLE program_change block with ALL required adds and removes in one array. Never make partial changes that leave exercises that weren't part of the suggestion.
 Only include this block when actually making a change. Be direct and concise, 3-5 sentences unless more detail is needed.`;

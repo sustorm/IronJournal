@@ -365,8 +365,8 @@ export default function App() {
       } else if (action === 'remove_exercise' && day) {
         day.exercises = day.exercises.filter(e => e.name !== data.name);
       } else if (action === 'update_exercise' && day) {
-        const ex = day.exercises.find(e => e.name === data.name);
-        if (ex) Object.assign(ex, data);
+        const ex = day.exercises.find(e => e.name === (data.oldName || data.name));
+        if (ex) { Object.assign(ex, data); delete ex.oldName; }
       } else if (action === 'rename_day' && day) {
         if (data.name) day.name = data.name;
         if (data.focus) day.focus = data.focus;
