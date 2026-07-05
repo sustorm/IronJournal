@@ -9,10 +9,33 @@ function SyncIndicator({ sync }) {
   );
 }
 
-function TopBar({ sync, currentScreen, debugMode, onShowEdit, onShowProgress, onShowChat }) {
+const SUB_PAGE_TITLES = {
+  edit: 'Edit Program',
+  progress: 'Progress',
+  chat: 'AI Coach',
+};
+
+function TopBar({ sync, currentScreen, debugMode, onShowEdit, onShowProgress, onShowChat, onBack }) {
   const today = new Date().toLocaleDateString('en-US', {
     weekday: 'long', month: 'short', day: 'numeric',
   });
+
+  const subPageTitle = SUB_PAGE_TITLES[currentScreen];
+
+  if (subPageTitle) {
+    return (
+      <div className="topbar">
+        <div className="topbar-subpage-title">{subPageTitle}</div>
+        <button onClick={onBack} style={{
+          border: '1px solid var(--border)', background: 'transparent',
+          color: 'var(--muted)', fontFamily: "'DM Mono', monospace",
+          fontSize: 'var(--fs-xs)', letterSpacing: '1px', textTransform: 'uppercase',
+          padding: '8px 14px', borderRadius: '8px', cursor: 'pointer',
+          display: 'flex', alignItems: 'center', gap: '6px',
+        }}>← Back</button>
+      </div>
+    );
+  }
 
   return (
     <div className="topbar">

@@ -69,6 +69,12 @@ body {
 }
 .topbar-date { font-size: var(--fs-xs); color: var(--muted); margin-top: 2px; }
 .topbar-right { display: flex; gap: 8px; align-items: center; }
+.topbar-subpage-title {
+  font-family: 'Playfair Display', serif;
+  font-size: var(--fs-lg);
+  font-style: italic;
+  color: #eeeeff;
+}
 
 .sync-indicator {
   font-size: 10px;
@@ -134,7 +140,7 @@ body {
 /* ── Screens ── */
 .screen { display: none; padding-bottom: 40px; }
 .screen.active { display: block; }
-.chat-screen.active { display: flex; flex-direction: column; height: calc(100dvh - 168px); padding-bottom: 0; }
+.chat-screen.active { display: flex; flex-direction: column; height: calc(100dvh - 124px); padding-bottom: 0; }
 
 /* ── Day header ── */
 .day-header {

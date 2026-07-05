@@ -198,33 +198,13 @@ function ExerciseDragList({ day, onEditField, onRemoveEx, onAddEx, onReorder }) 
 }
 
 export default function EditScreen({
-  program, onBack,
+  program,
   onEditDayField, onRemoveDay, onAddDay,
   onEditExField, onRemoveEx, onAddEx, onReorderEx,
   addDayFormRef,
 }) {
   return (
     <div className="edit-wrap">
-      <div style={{
-        fontFamily: "'Playfair Display', serif",
-        fontSize: 'var(--fs-lg)',
-        fontStyle: 'italic',
-        color: '#eeeeff',
-        padding: '4px 0 8px',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-      }}>
-        <span>Edit Program</span>
-        <button onClick={onBack} style={{
-          border: '1px solid var(--border)', background: 'transparent',
-          color: 'var(--muted)', fontFamily: "'DM Mono', monospace",
-          fontSize: 'var(--fs-xs)', letterSpacing: '1px', textTransform: 'uppercase',
-          padding: '8px 14px', borderRadius: '8px', cursor: 'pointer',
-          display: 'flex', alignItems: 'center', gap: '6px',
-        }}>← Back</button>
-      </div>
-
       {/* Training days */}
       <div className="edit-section" id="days-edit-section">
         <div className="edit-section-title">Training Days</div>
