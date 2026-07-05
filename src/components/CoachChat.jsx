@@ -148,7 +148,7 @@ export default function CoachChat({ currentDay, allDays, setData, onApplyChange 
         <textarea
           ref={inputRef}
           className="chat-input"
-          placeholder="Ask about weights, form, or program changes…"
+          placeholder="Ask here…"
           value={input}
           rows={1}
           onChange={e => {

@@ -500,6 +500,25 @@ export default function App() {
       )}
 
       <div className={`screen chat-screen${currentScreen === 'chat' ? ' active' : ''}`}>
+        <div style={{
+          fontFamily: "'Playfair Display', serif",
+          fontSize: 'var(--fs-lg)',
+          fontStyle: 'italic',
+          color: '#eeeeff',
+          padding: '16px 20px 8px',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+        }}>
+          <span>AI Coach</span>
+          <button onClick={() => showScreen('log')} style={{
+            border: '1px solid var(--border)', background: 'transparent',
+            color: 'var(--muted)', fontFamily: "'DM Mono', monospace",
+            fontSize: 'var(--fs-xs)', letterSpacing: '1px', textTransform: 'uppercase',
+            padding: '8px 14px', borderRadius: '8px', cursor: 'pointer',
+            display: 'flex', alignItems: 'center', gap: '6px',
+          }}>← Back</button>
+        </div>
         <CoachChat
           currentDay={currentDay}
           allDays={program.days}
