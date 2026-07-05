@@ -9,4 +9,6 @@ export const storage = {
   setSets: s => localStorage.setItem(prefix + 'sets4', JSON.stringify(s)),
   getSessions: () => JSON.parse(localStorage.getItem(prefix + 'sess4') || '[]'),
   setSessions: s => localStorage.setItem(prefix + 'sess4', JSON.stringify(s)),
+  getCoachTake: () => JSON.parse(localStorage.getItem(prefix + 'take') || 'null'),
+  setCoachTake: t => localStorage.setItem(prefix + 'take', JSON.stringify(t)),
 };

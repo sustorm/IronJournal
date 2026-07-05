@@ -1,14 +1,12 @@
 import { memo } from 'react';
 import ExerciseCard from './ExerciseCard.jsx';
-import CoachChat from './CoachChat.jsx';
 import { getExSets } from '../lib/helpers.js';
 
 function LogScreen({
-  day, allDays, setData,
+  day, setData,
   onWeightChange, onRepsAdj, onAddSet, onDeleteSet,
   onOpenAddEx, onOpenEditEx,
   onSaveSession,
-  onApplyChange,
 }) {
   if (!day) {
     return (
@@ -67,13 +65,6 @@ function LogScreen({
           Save {day.name} Session
         </button>
       </div>
-
-      <CoachChat
-        currentDay={day}
-        allDays={allDays}
-        setData={setData}
-        onApplyChange={onApplyChange}
-      />
     </>
   );
 }

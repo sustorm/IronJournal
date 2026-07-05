@@ -8,6 +8,7 @@ import { useSyncStatus } from './hooks/useSyncStatus.js';
 import TopBar from './components/TopBar.jsx';
 import DayTabs from './components/DayTabs.jsx';
 import LogScreen from './components/LogScreen.jsx';
+import CoachChat from './components/CoachChat.jsx';
 import ProgressScreen from './components/ProgressScreen.jsx';
 import EditScreen from './components/EditScreen.jsx';
 import AddExModal from './components/AddExModal.jsx';
@@ -147,6 +148,19 @@ export default function App() {
       const lastWeight = exSets.length ? exSets[exSets.length - 1].weight : '';
       const next = [...exSets, { weight: lastWeight, reps: 0 }];
       const newData = { ...prev, [d.id]: { ...daySets, [exId]: next } };
+      storage.setSets(newData);
+      return newData;
+    });
+  }
+
+  // Clears logged sets for one exercise so a swapped-in movement starts fresh
+  // (getExSets lazily regenerates a zeroed array sized to the new exercise.sets).
+  function resetExerciseSets(dayId, exId) {
+    setSetData(prev => {
+      const daySets = prev[dayId] || {};
+      if (!(exId in daySets)) return prev;
+      const { [exId]: _removed, ...rest } = daySets;
+      const newData = { ...prev, [dayId]: rest };
       storage.setSets(newData);
       return newData;
     });
@@ -343,6 +357,23 @@ export default function App() {
     showToast('Exercise updated');
   }
 
+  function handleEditExSwap(suggestion) {
+    const newProg = dc(program);
+    const d = newProg.days.find(x => x.id === editExModal.dayId);
+    const ex = d?.exercises.find(e => e.id === editExModal.exId);
+    if (!ex) return;
+    Object.assign(ex, {
+      name: suggestion.name,
+      sets: suggestion.sets,
+      reps: suggestion.reps,
+      note: suggestion.note || '',
+    });
+    saveProgram(newProg);
+    resetExerciseSets(editExModal.dayId, editExModal.exId);
+    setEditExModal({ open: false, exId: null, dayId: null });
+    showToast('Exercise swapped');
+  }
+
   function handleEditExDelete() {
     const newProg = dc(program);
     const d = newProg.days.find(x => x.id === editExModal.dayId);
@@ -376,7 +407,11 @@ export default function App() {
         day.exercises = day.exercises.filter(e => e.name !== data.name);
       } else if (action === 'update_exercise' && day) {
         const ex = day.exercises.find(e => e.name === (data.oldName || data.name));
-        if (ex) { Object.assign(ex, data); delete ex.oldName; }
+        if (ex) {
+          if (data.oldName) resetExerciseSets(targetDayId, ex.id);
+          Object.assign(ex, data);
+          delete ex.oldName;
+        }
       } else if (action === 'rename_day' && day) {
         if (data.name) day.name = data.name;
         if (data.focus) day.focus = data.focus;
@@ -423,8 +458,9 @@ export default function App() {
   }
 
   const currentDay = program.days.find(d => d.id === currentDayId);
+  const editDay = editExModal.dayId ? program.days.find(d => d.id === editExModal.dayId) : null;
   const editExercise = editExModal.exId
-    ? program.days.find(d => d.id === editExModal.dayId)?.exercises.find(e => e.id === editExModal.exId)
+    ? editDay?.exercises.find(e => e.id === editExModal.exId)
     : null;
 
   if (loading) return <LoadingOverlay />;
@@ -437,12 +473,13 @@ export default function App() {
         debugMode={isDebugMode}
         onShowEdit={() => showScreen('edit')}
         onShowProgress={() => showScreen('progress')}
+        onShowChat={() => showScreen('chat')}
       />
 
       <DayTabs
         days={program.days}
         currentDayId={currentDayId}
-        visible={currentScreen === 'log'}
+        visible={currentScreen === 'log' || currentScreen === 'chat'}
         onSwitch={switchDay}
       />
 
@@ -450,7 +487,6 @@ export default function App() {
         <div className="screen active">
           <LogScreen
             day={currentDay}
-            allDays={program.days}
             setData={setData}
             onWeightChange={updateWeight}
             onRepsAdj={adjustReps}
@@ -459,10 +495,18 @@ export default function App() {
             onOpenAddEx={targetDayId => setAddExModal({ open: true, targetDayId })}
             onOpenEditEx={openEditEx}
             onSaveSession={saveSession}
-            onApplyChange={applyChange}
           />
         </div>
       )}
+
+      <div className={`screen chat-screen${currentScreen === 'chat' ? ' active' : ''}`}>
+        <CoachChat
+          currentDay={currentDay}
+          allDays={program.days}
+          setData={setData}
+          onApplyChange={applyChange}
+        />
+      </div>
 
       {currentScreen === 'progress' && (
         <div className="screen active">
@@ -500,9 +544,12 @@ export default function App() {
       <EditExModal
         open={editExModal.open}
         exercise={editExercise}
+        day={editDay}
+        allDays={program.days}
         onClose={() => setEditExModal({ open: false, exId: null, dayId: null })}
         onSave={handleEditExSave}
         onDelete={handleEditExDelete}
+        onSwap={handleEditExSwap}
       />
 
       <Toast ref={toastRef} />

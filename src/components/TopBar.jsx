@@ -9,7 +9,7 @@ function SyncIndicator({ sync }) {
   );
 }
 
-function TopBar({ sync, currentScreen, debugMode, onShowEdit, onShowProgress }) {
+function TopBar({ sync, currentScreen, debugMode, onShowEdit, onShowProgress, onShowChat }) {
   const today = new Date().toLocaleDateString('en-US', {
     weekday: 'long', month: 'short', day: 'numeric',
   });
@@ -58,6 +58,13 @@ function TopBar({ sync, currentScreen, debugMode, onShowEdit, onShowProgress }) 
           title="Progress"
         >
           📊
+        </button>
+        <button
+          className={`icon-btn${currentScreen === 'chat' ? ' active' : ''}`}
+          onClick={onShowChat}
+          title="AI Coach"
+        >
+          💬
         </button>
       </div>
     </div>

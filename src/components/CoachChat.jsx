@@ -41,7 +41,6 @@ function TypingIndicator() {
 }
 
 export default function CoachChat({ currentDay, allDays, setData, onApplyChange }) {
-  const [open, setOpen] = useState(false);
   const [msgs, setMsgs] = useState([INITIAL_MSG]);
   const [pendingChange, setPendingChange] = useState(null);
   const [typing, setTyping] = useState(false);
@@ -50,10 +49,10 @@ export default function CoachChat({ currentDay, allDays, setData, onApplyChange 
   const inputRef = useRef(null);
 
   useEffect(() => {
-    if (open && msgsRef.current) {
+    if (msgsRef.current) {
       setTimeout(() => { msgsRef.current.scrollTop = msgsRef.current.scrollHeight; }, 50);
     }
-  }, [msgs, open, typing]);
+  }, [msgs, typing]);
 
   function buildLogCtx() {
     let ctx = 'Full program (use these exact day IDs in program_change JSON):\n';
@@ -128,51 +127,41 @@ export default function CoachChat({ currentDay, allDays, setData, onApplyChange 
   }
 
   return (
-    <>
-      <div className="coach-bar">
-        <button
-          className={`coach-toggle${open ? ' open' : ''}`}
-          onClick={() => setOpen(o => !o)}
-        >
-          💬 &nbsp;{open ? 'Close Coach' : 'Ask Your Coach'}
-        </button>
+    <div className="chat-panel">
+      <div className="chat-messages" ref={msgsRef}>
+        {msgs.map((m, i) => <MessageBubble key={i} msg={m} />)}
+        {typing && <TypingIndicator />}
       </div>
-      <div className={`chat-panel${open ? ' open' : ''}`}>
-        <div className="chat-messages" ref={msgsRef}>
-          {msgs.map((m, i) => <MessageBubble key={i} msg={m} />)}
-          {typing && <TypingIndicator />}
+      {pendingChange && (
+        <div className="chat-apply-wrap">
+          <button className="chat-apply-btn" onClick={handleApply}>
+            ✓ Apply suggested program change
+          </button>
         </div>
-        {pendingChange && (
-          <div className="chat-apply-wrap">
-            <button className="chat-apply-btn" onClick={handleApply}>
-              ✓ Apply suggested program change
-            </button>
-          </div>
-        )}
-        <div className="quick-prompts">
-          {QUICK_PROMPTS.map(p => (
-            <button key={p} className="qp" onClick={() => send(p)}>{p}</button>
-          ))}
-        </div>
-        <div className="chat-input-row">
-          <textarea
-            ref={inputRef}
-            className="chat-input"
-            placeholder="Ask about weights, form, or program changes…"
-            value={input}
-            rows={1}
-            onChange={e => {
-              setInput(e.target.value);
-              e.target.style.height = 'auto';
-              e.target.style.height = e.target.scrollHeight + 'px';
-            }}
-            onKeyDown={e => {
-              if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(); }
-            }}
-          />
-          <button className="send-btn" onClick={() => send()} disabled={typing}>→</button>
-        </div>
+      )}
+      <div className="quick-prompts">
+        {QUICK_PROMPTS.map(p => (
+          <button key={p} className="qp" onClick={() => send(p)}>{p}</button>
+        ))}
       </div>
-    </>
+      <div className="chat-input-row">
+        <textarea
+          ref={inputRef}
+          className="chat-input"
+          placeholder="Ask about weights, form, or program changes…"
+          value={input}
+          rows={1}
+          onChange={e => {
+            setInput(e.target.value);
+            e.target.style.height = 'auto';
+            e.target.style.height = e.target.scrollHeight + 'px';
+          }}
+          onKeyDown={e => {
+            if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(); }
+          }}
+        />
+        <button className="send-btn" onClick={() => send()} disabled={typing}>→</button>
+      </div>
+    </div>
   );
 }
