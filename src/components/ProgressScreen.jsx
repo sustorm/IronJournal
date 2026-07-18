@@ -1,4 +1,4 @@
-import { memo, useEffect, useRef, useState } from 'react';
+import { memo, useEffect, useMemo, useRef, useState } from 'react';
 import ExerciseProgressChart from './ExerciseProgressChart.jsx';
 import { storage } from '../lib/storage.js';
 import { getProgressTake } from '../lib/coach.js';
@@ -7,12 +7,24 @@ function fingerprintFor(sessions) {
   return `${sessions.length}:${sessions[0]?.id || ''}`;
 }
 
-function ProgressScreen({ sessions, onDeleteSession }) {
+function ProgressScreen({ sessions, program, onDeleteSession }) {
   const [confirmDelete, setConfirmDelete] = useState(null); // session object to delete
   const longPressTimer = useRef(null);
   const [take, setTake] = useState(null); // { text, fingerprint }
   const [takeStatus, setTakeStatus] = useState('idle'); // idle | loading | error
   const [takeCollapsed, setTakeCollapsed] = useState(() => storage.getTakeCollapsed());
+
+  // Exercise name -> logType, from the current program. Exercises no longer
+  // in the program (renamed/removed) fall back to 'weight' below.
+  const exerciseLogTypes = useMemo(() => {
+    const map = {};
+    (program?.days || []).forEach(d => {
+      (d.exercises || []).forEach(ex => {
+        map[ex.name] = ex.logType === 'duration' ? 'duration' : 'weight';
+      });
+    });
+    return map;
+  }, [program]);
 
   useEffect(() => {
     setTake(storage.getCoachTake());
@@ -35,6 +47,7 @@ function ProgressScreen({ sessions, onDeleteSession }) {
       const volMap = {};
       sessions.forEach(sess => {
         (sess.exercises || []).forEach(exRef => {
+          if (exerciseLogTypes[exRef.name] === 'duration') return;
           const rows = sess.sets?.[exRef.id] || [];
           const vol = rows.reduce((s, r) => s + (parseFloat(r.weight) || 0) * r.reps, 0);
           if (!vol) return;
@@ -72,6 +85,7 @@ function ProgressScreen({ sessions, onDeleteSession }) {
   const volMap = {};
   sessions.forEach(sess => {
     (sess.exercises || []).forEach(exRef => {
+      if (exerciseLogTypes[exRef.name] === 'duration') return;
       const rows = sess.sets?.[exRef.id] || [];
       const vol = rows.reduce((s, r) => s + (parseFloat(r.weight) || 0) * r.reps, 0);
       if (!vol) return;
@@ -126,7 +140,7 @@ function ProgressScreen({ sessions, onDeleteSession }) {
         )}
       </div>
 
-      <ExerciseProgressChart sessions={sessions} />
+      <ExerciseProgressChart sessions={sessions} exerciseLogTypes={exerciseLogTypes} />
 
       <div className="progress-section">
         <div className="progress-section-title">Weekly Volume (lbs) — last 6 weeks</div>

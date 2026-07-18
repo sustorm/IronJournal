@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { suggestExerciseSwap } from '../lib/coach.js';
+import LogTypeToggle from './LogTypeToggle.jsx';
 
 export default function EditExModal({ open, exercise, day, allDays, onClose, onSave, onDelete, onSwap }) {
   const nameRef = useRef(null);
@@ -8,6 +9,7 @@ export default function EditExModal({ open, exercise, day, allDays, onClose, onS
   const noteRef = useRef(null);
   const [view, setView] = useState('edit');
   const [suggestion, setSuggestion] = useState(null);
+  const [logType, setLogType] = useState('weight');
 
   useEffect(() => {
     if (open && exercise) {
@@ -25,6 +27,7 @@ export default function EditExModal({ open, exercise, day, allDays, onClose, onS
       if (setsRef.current) setsRef.current.value = exercise.sets;
       if (repsRef.current) repsRef.current.value = exercise.reps;
       if (noteRef.current) noteRef.current.value = exercise.note || '';
+      setLogType(exercise.logType === 'duration' ? 'duration' : 'weight');
     }
   }, [view, exercise]);
 
@@ -34,6 +37,7 @@ export default function EditExModal({ open, exercise, day, allDays, onClose, onS
       sets: parseInt(setsRef.current?.value) || exercise.sets,
       reps: parseInt(repsRef.current?.value) || exercise.reps,
       note: noteRef.current?.value.trim() || '',
+      logType,
     });
   }
 
@@ -72,6 +76,7 @@ export default function EditExModal({ open, exercise, day, allDays, onClose, onS
               <span className="modal-label">Reps</span>
               <input ref={repsRef} className="modal-mini" type="number" min="1" max="100" />
             </div>
+            <LogTypeToggle value={logType} onChange={setLogType} />
             <input ref={noteRef} className="modal-input" placeholder="Note (optional)…" />
             <button className="modal-btn secondary" style={{ width: '100%' }} onClick={fetchSuggestion}>
               🔀 Swap

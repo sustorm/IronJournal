@@ -22,7 +22,7 @@ const PAD = { top: 28, right: 16, bottom: 36, left: 16 };
 const IW = VB_W - PAD.left - PAD.right;
 const IH = VB_H - PAD.top - PAD.bottom;
 
-function Chart({ data }) {
+function Chart({ data, unit }) {
   if (data.length < 2) {
     return (
       <div style={{ padding: '12px 0 4px', color: 'var(--muted)', fontSize: 'var(--fs-sm)' }}>
@@ -62,10 +62,10 @@ function Chart({ data }) {
     <div>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: '8px' }}>
         <span style={{ fontSize: 'var(--fs-md)', color: 'var(--text)', fontWeight: 500 }}>
-          {last} lbs
+          {last} {unit}
         </span>
         <span style={{ fontSize: 'var(--fs-xs)', color: trendColor, letterSpacing: '0.5px' }}>
-          {trendSymbol} {Math.abs(delta).toFixed(1)} lbs from first session
+          {trendSymbol} {Math.abs(delta).toFixed(1)} {unit} from first session
         </span>
       </div>
       <svg viewBox={`0 0 ${VB_W} ${VB_H}`} style={{ width: '100%', display: 'block', overflow: 'visible' }}>
@@ -135,12 +135,23 @@ function Chart({ data }) {
   );
 }
 
-export default function ExerciseProgressChart({ sessions }) {
+export default function ExerciseProgressChart({ sessions, exerciseLogTypes }) {
+  // Only offer exercises with at least 2 logged entries — anything with
+  // fewer can't show a trend anyway (see Chart's own "need 2 sessions" state).
   const exercises = useMemo(() => {
-    const names = new Set(
-      sessions.flatMap(s => (s.exercises || []).map(e => e.name))
-    );
-    return [...names].sort();
+    const counts = new Map();
+    sessions.forEach(sess => {
+      (sess.exercises || []).forEach(exRef => {
+        const rows = sess.sets?.[exRef.id] || [];
+        const hasEntry = rows.some(r => (parseFloat(r.weight) || 0) > 0);
+        if (!hasEntry) return;
+        counts.set(exRef.name, (counts.get(exRef.name) || 0) + 1);
+      });
+    });
+    return [...counts.entries()]
+      .filter(([, count]) => count >= 2)
+      .map(([name]) => name)
+      .sort();
   }, [sessions]);
 
   const [selected, setSelected] = useState(() => exercises[0] || '');
@@ -152,9 +163,12 @@ export default function ExerciseProgressChart({ sessions }) {
 
   if (!exercises.length) return null;
 
+  const isDuration = exerciseLogTypes?.[selected] === 'duration';
+  const unit = isDuration ? 'sec' : 'lbs';
+
   return (
     <div className="progress-section">
-      <div className="progress-section-title">Exercise Progress (max weight per session)</div>
+      <div className="progress-section-title">Exercise Progress (max {isDuration ? 'duration' : 'weight'} per session)</div>
       <div style={{ padding: '14px 16px' }}>
         <div style={{ position: 'relative', marginBottom: '12px' }}>
           <select
@@ -190,7 +204,7 @@ export default function ExerciseProgressChart({ sessions }) {
             lineHeight: 1,
           }}>▾</span>
         </div>
-        <Chart data={data} />
+        <Chart data={data} unit={unit} />
       </div>
     </div>
   );

@@ -1,10 +1,12 @@
-import { useRef, useEffect } from 'react';
+import { useRef, useEffect, useState } from 'react';
+import LogTypeToggle from './LogTypeToggle.jsx';
 
 export default function AddExModal({ open, onClose, onConfirm }) {
   const nameRef = useRef(null);
   const setsRef = useRef(null);
   const repsRef = useRef(null);
   const noteRef = useRef(null);
+  const [logType, setLogType] = useState('weight');
 
   useEffect(() => {
     if (open) setTimeout(() => nameRef.current?.focus(), 150);
@@ -18,11 +20,13 @@ export default function AddExModal({ open, onClose, onConfirm }) {
       sets: parseInt(setsRef.current?.value) || 3,
       reps: parseInt(repsRef.current?.value) || 8,
       note: noteRef.current?.value.trim() || '',
+      logType,
     });
     nameRef.current.value = '';
     if (setsRef.current) setsRef.current.value = '3';
     if (repsRef.current) repsRef.current.value = '8';
     if (noteRef.current) noteRef.current.value = '';
+    setLogType('weight');
   }
 
   function handleOverlayClick(e) {
@@ -40,6 +44,7 @@ export default function AddExModal({ open, onClose, onConfirm }) {
           <span className="modal-label">Reps</span>
           <input ref={repsRef} className="modal-mini" type="number" defaultValue="8" min="1" max="100" />
         </div>
+        <LogTypeToggle value={logType} onChange={setLogType} />
         <input ref={noteRef} className="modal-input" placeholder="Note (optional)…" />
         <div className="modal-btns">
           <button className="modal-btn secondary" onClick={onClose}>Cancel</button>

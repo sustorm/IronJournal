@@ -1,6 +1,6 @@
 import { memo } from 'react';
 
-function SetRow({ exId, index, set, onWeightChange, onRepsAdj, onDelete }) {
+function SetRow({ exId, index, set, isDuration, onWeightChange, onRepsAdj, onDelete }) {
   return (
     <div className={`set-row${set.reps > 0 ? ' done' : ''}`}>
       <div className="set-num">{index + 1}</div>
@@ -8,7 +8,7 @@ function SetRow({ exId, index, set, onWeightChange, onRepsAdj, onDelete }) {
         className="set-weight"
         type="number"
         inputMode="decimal"
-        placeholder="lbs"
+        placeholder={isDuration ? 'sec' : 'lbs'}
         value={set.weight}
         onChange={e => onWeightChange(exId, index, e.target.value)}
         onFocus={e => e.target.select()}

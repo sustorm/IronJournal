@@ -334,11 +334,11 @@ export default function App() {
     saveProgram(newProg);
   }
 
-  function handleAddExConfirm({ name, sets, reps, note }) {
+  function handleAddExConfirm({ name, sets, reps, note, logType }) {
     const newProg = dc(program);
     const d = newProg.days.find(x => x.id === addExModal.targetDayId);
     if (!d) return;
-    d.exercises.push({ id: uid(), name, sets, reps, note });
+    d.exercises.push({ id: uid(), name, sets, reps, note, logType });
     saveProgram(newProg);
     setAddExModal({ open: false, targetDayId: null });
     showToast('Exercise added');
@@ -348,12 +348,12 @@ export default function App() {
     setEditExModal({ open: true, exId, dayId: currentDayId });
   }
 
-  function handleEditExSave({ name, sets, reps, note }) {
+  function handleEditExSave({ name, sets, reps, note, logType }) {
     const newProg = dc(program);
     const d = newProg.days.find(x => x.id === editExModal.dayId);
     const ex = d?.exercises.find(e => e.id === editExModal.exId);
     if (!ex) return;
-    Object.assign(ex, { name, sets, reps, note });
+    Object.assign(ex, { name, sets, reps, note, logType });
     saveProgram(newProg);
     setEditExModal({ open: false, exId: null, dayId: null });
     showToast('Exercise updated');
@@ -571,6 +571,7 @@ export default function App() {
         <div className="screen active">
           <ProgressScreen
             sessions={sessions}
+            program={program}
             onDeleteSession={deleteSession}
           />
         </div>

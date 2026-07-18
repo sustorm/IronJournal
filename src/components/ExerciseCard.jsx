@@ -3,6 +3,7 @@ import SetRow from './SetRow.jsx';
 
 function ExerciseCard({ exercise, dayColor, sets, onWeightChange, onRepsAdj, onAddSet, onDeleteSet, onOpenEdit }) {
   const anyDone = sets.some(s => s.reps > 0);
+  const isDuration = exercise.logType === 'duration';
 
   return (
     <div className="ex-card">
@@ -27,7 +28,7 @@ function ExerciseCard({ exercise, dayColor, sets, onWeightChange, onRepsAdj, onA
       <div className="set-table">
         <div className="set-header">
           <div className="shc">Set</div>
-          <div className="shc">Weight (lbs)</div>
+          <div className="shc">{isDuration ? 'Duration (sec)' : 'Weight (lbs)'}</div>
           <div className="shc c">Reps</div>
           <div className="shc" />
         </div>
@@ -37,6 +38,7 @@ function ExerciseCard({ exercise, dayColor, sets, onWeightChange, onRepsAdj, onA
             exId={exercise.id}
             index={i}
             set={s}
+            isDuration={isDuration}
             onWeightChange={onWeightChange}
             onRepsAdj={onRepsAdj}
             onDelete={onDeleteSet}
