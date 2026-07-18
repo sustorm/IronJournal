@@ -14,6 +14,14 @@ const INITIAL_MSG = {
   content: "Hey! Log your sets above then ask me anything — weights, form, or program changes. I can update your program directly from this chat.",
 };
 
+// Splits on sentence-ending punctuation so each chunk can be requested (and
+// start playing) independently instead of waiting on the whole reply.
+function splitIntoSpeechChunks(text) {
+  const parts = text.match(/[^.!?]+[.!?]+(\s+|$)|[^.!?]+$/g) || [text];
+  const chunks = parts.map(s => s.trim()).filter(Boolean);
+  return chunks.length ? chunks : [text];
+}
+
 function MessageBubble({ msg, index, voiceState, onSpeak }) {
   const clean = msg.content
     .replace(/<program_change>[\s\S]*?<\/program_change>/g, '')
@@ -65,6 +73,7 @@ export default function CoachChat({ currentDay, allDays, setData, onApplyChange,
   const inputRef = useRef(null);
   const audioRef = useRef(null);
   const audioUrlRef = useRef(null);
+  const speakTokenRef = useRef(0);
 
   useEffect(() => {
     if (msgsRef.current) {
@@ -79,6 +88,7 @@ export default function CoachChat({ currentDay, allDays, setData, onApplyChange,
   }, [isActive]);
 
   function stopSpeaking() {
+    speakTokenRef.current++; // invalidate any in-flight playback loop
     if (audioRef.current) {
       audioRef.current.pause();
       audioRef.current.onended = null;
@@ -98,18 +108,47 @@ export default function CoachChat({ currentDay, allDays, setData, onApplyChange,
       return;
     }
     stopSpeaking();
+    const token = ++speakTokenRef.current;
+
+    // Create + attempt play() synchronously inside this click handler, before
+    // any awaits. iOS/Safari only allow audio playback that's directly tied
+    // to a user gesture — a later play() call after the async TTS fetch gets
+    // silently rejected otherwise (that's the "works on the 2nd tap" bug).
+    const audio = new Audio();
+    audioRef.current = audio;
+    audio.play().catch(() => {});
+
     setVoiceState({ idx, status: 'loading' });
+
+    // Split into sentence-sized chunks and fetch them all in parallel, then
+    // play back-to-back. A short first sentence finishes generating much
+    // faster than the whole reply would as one request, so playback starts
+    // almost immediately instead of waiting out the full paragraph.
+    const chunks = splitIntoSpeechChunks(text);
+    const chunkPromises = chunks.map(c => synthesizeSpeech(c));
+
     try {
-      const blob = await synthesizeSpeech(text);
-      const url = URL.createObjectURL(blob);
-      audioUrlRef.current = url;
-      const audio = new Audio(url);
-      audioRef.current = audio;
-      audio.onended = stopSpeaking;
-      audio.onerror = stopSpeaking;
-      await audio.play();
-      setVoiceState({ idx, status: 'playing' });
+      for (const chunkPromise of chunkPromises) {
+        const blob = await chunkPromise;
+        if (speakTokenRef.current !== token) return;
+
+        const url = URL.createObjectURL(blob);
+        audioUrlRef.current = url;
+        audio.src = url;
+
+        await new Promise((resolve, reject) => {
+          audio.onended = resolve;
+          audio.onerror = () => reject(new Error('Audio playback error'));
+          audio.play().then(() => setVoiceState({ idx, status: 'playing' })).catch(reject);
+        });
+
+        URL.revokeObjectURL(url);
+        audioUrlRef.current = null;
+        if (speakTokenRef.current !== token) return;
+      }
+      if (speakTokenRef.current === token) stopSpeaking();
     } catch (e) {
+      if (speakTokenRef.current !== token) return;
       console.warn('Text-to-speech failed:', e);
       setVoiceState({ idx, status: 'error' });
       setTimeout(() => {
