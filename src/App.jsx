@@ -200,10 +200,14 @@ export default function App() {
     setSessions(newSessions);
     storage.setSessions(newSessions);
 
-    // Reset reps to 0 but keep weights so the next session starts fresh
+    // Reset reps to 0 but keep weights so the next session starts fresh.
+    // Duration exercises use the same field to hold seconds and to derive
+    // "done" (no reps to reset there) — carrying it forward would make a
+    // brand new day look already completed, so clear it instead.
     const resetDay = {};
     Object.entries(entry.sets).forEach(([exId, rows]) => {
-      resetDay[exId] = rows.map(r => ({ ...r, reps: 0 }));
+      const isDuration = d.exercises.find(e => e.id === exId)?.logType === 'duration';
+      resetDay[exId] = rows.map(r => isDuration ? { weight: '', reps: 0 } : { ...r, reps: 0 });
     });
     const resetData = { ...setData, [d.id]: resetDay };
     setSetData(resetData);
