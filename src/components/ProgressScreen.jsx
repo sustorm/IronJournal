@@ -82,19 +82,6 @@ function ProgressScreen({ sessions, program, onDeleteSession }) {
   function cancelLongPress() {
     clearTimeout(longPressTimer.current);
   }
-  const volMap = {};
-  sessions.forEach(sess => {
-    (sess.exercises || []).forEach(exRef => {
-      if (exerciseLogTypes[exRef.name] === 'duration') return;
-      const rows = sess.sets?.[exRef.id] || [];
-      const vol = rows.reduce((s, r) => s + (parseFloat(r.weight) || 0) * r.reps, 0);
-      if (!vol) return;
-      if (!volMap[exRef.name]) volMap[exRef.name] = {};
-      volMap[exRef.name][sess.weekKey] = (volMap[exRef.name][sess.weekKey] || 0) + vol;
-    });
-  });
-
-  const allWeeks = [...new Set(sessions.map(s => s.weekKey))].sort().slice(-6);
 
   return (
     <div className="progress-wrap">
@@ -141,40 +128,6 @@ function ProgressScreen({ sessions, program, onDeleteSession }) {
       </div>
 
       <ExerciseProgressChart sessions={sessions} exerciseLogTypes={exerciseLogTypes} />
-
-      <div className="progress-section">
-        <div className="progress-section-title">Weekly Volume (lbs) — last 6 weeks</div>
-        {Object.keys(volMap).length === 0 ? (
-          <div className="hist-empty">No data yet — save some sessions first.</div>
-        ) : (
-          Object.entries(volMap).map(([name, weeks]) => {
-            const vals = allWeeks.map(w => weeks[w] || 0);
-            const mx = Math.max(...vals, 1);
-            return (
-              <div key={name} className="vol-row">
-                <div className="vol-ex-name">{name}</div>
-                <div className="vol-weeks">
-                  {allWeeks.map((w, i) => {
-                    const v = vals[i];
-                    const pct = Math.round((v / mx) * 100);
-                    return (
-                      <div key={w} className="vol-week-chip">
-                        <div className="vol-week-label">{w.slice(5)}</div>
-                        <div className="vol-week-val">
-                          {v ? Math.round(v).toLocaleString() : '-'}
-                        </div>
-                        <div className="vol-bar-wrap">
-                          <div className="vol-bar" style={{ width: `${pct}%` }} />
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            );
-          })
-        )}
-      </div>
 
       <div className="progress-section">
         <div className="progress-section-title">Session History</div>
