@@ -2,8 +2,8 @@ import { memo } from 'react';
 import SetRow from './SetRow.jsx';
 
 function ExerciseCard({ exercise, dayColor, sets, onWeightChange, onRepsAdj, onAddSet, onDeleteSet, onOpenEdit }) {
-  const anyDone = sets.some(s => s.reps > 0);
   const isDuration = exercise.logType === 'duration';
+  const anyDone = sets.some(s => isDuration ? (parseFloat(s.weight) || 0) > 0 : s.reps > 0);
 
   return (
     <div className="ex-card">
@@ -11,7 +11,7 @@ function ExerciseCard({ exercise, dayColor, sets, onWeightChange, onRepsAdj, onA
         <div style={{ flex: 1 }}>
           <div className="ex-name">{exercise.name}</div>
           <div className="ex-target">
-            Target {exercise.sets}×{exercise.reps}
+            Target {exercise.sets}×{exercise.reps}{isDuration ? ' sec' : ''}
             {exercise.note ? ` · ${exercise.note}` : ''}
           </div>
         </div>
@@ -25,11 +25,11 @@ function ExerciseCard({ exercise, dayColor, sets, onWeightChange, onRepsAdj, onA
           }
         />
       </div>
-      <div className="set-table">
+      <div className={`set-table${isDuration ? ' duration' : ''}`}>
         <div className="set-header">
-          <div className="shc">Set</div>
-          <div className="shc">{isDuration ? 'Duration (sec)' : 'Weight (lbs)'}</div>
-          <div className="shc c">Reps</div>
+          <div className="shc" />
+          <div className="shc">{isDuration ? 'Duration' : 'Weight'}</div>
+          <div className="shc c">{isDuration ? '' : 'Reps'}</div>
           <div className="shc" />
         </div>
         {sets.map((s, i) => (

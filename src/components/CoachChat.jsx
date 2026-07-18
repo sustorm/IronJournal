@@ -59,7 +59,8 @@ export default function CoachChat({ currentDay, allDays, setData, onApplyChange 
     (allDays || []).forEach(d => {
       ctx += `\n${d.id}: ${d.name}${d.focus ? ` — ${d.focus}` : ''}\n`;
       (d.exercises || []).forEach(ex => {
-        ctx += `  - ${ex.name} (${ex.sets}×${ex.reps}${ex.note ? ', ' + ex.note : ''})\n`;
+        const unit = ex.logType === 'duration' ? 'sec' : '';
+        ctx += `  - ${ex.name} (${ex.sets}×${ex.reps}${unit}${ex.note ? ', ' + ex.note : ''})\n`;
       });
     });
 
@@ -68,8 +69,13 @@ export default function CoachChat({ currentDay, allDays, setData, onApplyChange 
     if (!ds) return ctx;
 
     const loggedRows = currentDay.exercises.flatMap(ex => {
-      const rows = (ds[ex.id] || []).filter(r => r.reps > 0);
-      return rows.length ? [`- ${ex.name}: ` + rows.map((r, i) => `Set${i + 1} ${r.weight ? r.weight + 'lbs' : 'bw'}×${r.reps}`).join(', ') + ` (target ${ex.sets}×${ex.reps})`] : [];
+      const isDuration = ex.logType === 'duration';
+      const rows = (ds[ex.id] || []).filter(r => isDuration ? (parseFloat(r.weight) || 0) > 0 : r.reps > 0);
+      if (!rows.length) return [];
+      const formatted = isDuration
+        ? rows.map((r, i) => `Set${i + 1} ${r.weight}sec`).join(', ') + ` (target ${ex.sets}×${ex.reps}sec)`
+        : rows.map((r, i) => `Set${i + 1} ${r.weight ? r.weight + 'lbs' : 'bw'}×${r.reps}`).join(', ') + ` (target ${ex.sets}×${ex.reps})`;
+      return [`- ${ex.name}: ${formatted}`];
     });
     if (loggedRows.length) {
       ctx += `\nLogged sets today (${currentDay.name}):\n` + loggedRows.join('\n') + '\n';

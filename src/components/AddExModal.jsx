@@ -12,6 +12,17 @@ export default function AddExModal({ open, onClose, onConfirm }) {
     if (open) setTimeout(() => nameRef.current?.focus(), 150);
   }, [open]);
 
+  const REPS_DEFAULT = { weight: '8', duration: '30' };
+
+  function handleLogTypeChange(newType) {
+    // Swap the target field to the new mode's default, but only if the user
+    // hasn't already typed something else in — don't clobber real input.
+    if (repsRef.current?.value === REPS_DEFAULT[logType]) {
+      repsRef.current.value = REPS_DEFAULT[newType];
+    }
+    setLogType(newType);
+  }
+
   function handleConfirm() {
     const name = nameRef.current?.value.trim();
     if (!name) return;
@@ -24,7 +35,7 @@ export default function AddExModal({ open, onClose, onConfirm }) {
     });
     nameRef.current.value = '';
     if (setsRef.current) setsRef.current.value = '3';
-    if (repsRef.current) repsRef.current.value = '8';
+    if (repsRef.current) repsRef.current.value = REPS_DEFAULT.weight;
     if (noteRef.current) noteRef.current.value = '';
     setLogType('weight');
   }
@@ -38,13 +49,13 @@ export default function AddExModal({ open, onClose, onConfirm }) {
       <div className="modal">
         <div className="modal-title">Add Exercise</div>
         <input ref={nameRef} className="modal-input" placeholder="Exercise name…" />
+        <LogTypeToggle value={logType} onChange={handleLogTypeChange} />
         <div className="modal-row">
           <span className="modal-label">Sets</span>
           <input ref={setsRef} className="modal-mini" type="number" defaultValue="3" min="1" max="20" />
-          <span className="modal-label">Reps</span>
-          <input ref={repsRef} className="modal-mini" type="number" defaultValue="8" min="1" max="100" />
+          <span className="modal-label">{logType === 'duration' ? 'Sec' : 'Reps'}</span>
+          <input ref={repsRef} className="modal-mini" type="number" defaultValue={REPS_DEFAULT.weight} min="1" max={logType === 'duration' ? 600 : 100} />
         </div>
-        <LogTypeToggle value={logType} onChange={setLogType} />
         <input ref={noteRef} className="modal-input" placeholder="Note (optional)…" />
         <div className="modal-btns">
           <button className="modal-btn secondary" onClick={onClose}>Cancel</button>

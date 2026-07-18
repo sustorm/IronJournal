@@ -166,10 +166,12 @@ body {
 
 /* ── Set table ── */
 .set-table { border-top: 1px solid var(--border); }
-.set-header { display: grid; grid-template-columns: 36px 1fr 148px 44px; background: var(--surface2); border-bottom: 1px solid var(--border); padding: 0 8px; }
+.set-header { display: grid; grid-template-columns: 28px 1fr 148px 44px; background: var(--surface2); border-bottom: 1px solid var(--border); padding: 0 8px; }
 .shc { font-size: var(--fs-xs); color: var(--muted); letter-spacing: 1px; text-transform: uppercase; padding: 8px; font-weight: 500; }
 .shc.c { text-align: center; }
-.set-row { display: grid; grid-template-columns: 36px 1fr 148px 44px; border-bottom: 1px solid var(--faint); align-items: center; padding: 0 8px; min-height: 54px; transition: background .15s; }
+.set-row { display: grid; grid-template-columns: 28px 1fr 148px 44px; border-bottom: 1px solid var(--faint); align-items: center; padding: 0 8px; min-height: 54px; transition: background .15s; }
+.set-table.duration .set-header,
+.set-table.duration .set-row { grid-template-columns: 28px 1fr 44px; }
 .set-row:last-child { border-bottom: none; }
 .set-row.done { background: rgba(77, 255, 170, .05); }
 .set-num { font-size: var(--fs-sm); color: var(--muted); padding: 0 4px; }

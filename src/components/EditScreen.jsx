@@ -172,12 +172,12 @@ function ExerciseDragList({ day, onEditField, onRemoveEx, onAddEx, onReorder }) 
                 min="1" max="20"
                 onInput={e => onEditField(day.id, ex.id, 'sets', +e.target.value)}
               />
-              <span className="edit-meta-label">Reps</span>
+              <span className="edit-meta-label">{ex.logType === 'duration' ? 'Sec' : 'Reps'}</span>
               <input
                 className="edit-mini-input"
                 type="number"
                 defaultValue={ex.reps}
-                min="1" max="100"
+                min="1" max={ex.logType === 'duration' ? 600 : 100}
                 onInput={e => onEditField(day.id, ex.id, 'reps', +e.target.value)}
               />
               <input

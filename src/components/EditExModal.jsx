@@ -70,13 +70,13 @@ export default function EditExModal({ open, exercise, day, allDays, onClose, onS
           <>
             <div className="modal-title">Edit Exercise</div>
             <input ref={nameRef} className="modal-input" placeholder="Exercise name…" />
+            <LogTypeToggle value={logType} onChange={setLogType} />
             <div className="modal-row">
               <span className="modal-label">Sets</span>
               <input ref={setsRef} className="modal-mini" type="number" min="1" max="20" />
-              <span className="modal-label">Reps</span>
-              <input ref={repsRef} className="modal-mini" type="number" min="1" max="100" />
+              <span className="modal-label">{logType === 'duration' ? 'Sec' : 'Reps'}</span>
+              <input ref={repsRef} className="modal-mini" type="number" min="1" max={logType === 'duration' ? 600 : 100} />
             </div>
-            <LogTypeToggle value={logType} onChange={setLogType} />
             <input ref={noteRef} className="modal-input" placeholder="Note (optional)…" />
             <button className="modal-btn secondary" style={{ width: '100%' }} onClick={fetchSuggestion}>
               🔀 Swap
