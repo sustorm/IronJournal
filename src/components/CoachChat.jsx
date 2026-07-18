@@ -22,24 +22,23 @@ function MessageBubble({ msg, index, voiceState, onSpeak }) {
   const icon = isThisOne
     ? (voiceState.status === 'loading' ? '⋯' : voiceState.status === 'error' ? '⚠️' : '⏹')
     : '🔊';
+  const isPlaying = isThisOne && voiceState.status === 'playing';
   return (
     <div className={`msg ${msg.role}`}>
-      {msg.role === 'assistant' && clean && (
-        <div className="msg-label" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-          <span>Coach</span>
-          <button
-            className={`speak-btn${isThisOne && voiceState.status === 'playing' ? ' playing' : ''}`}
-            onClick={() => onSpeak(index, clean)}
-            aria-label={isThisOne && voiceState.status === 'playing' ? 'Stop speaking' : 'Speak this reply'}
-          >
-            {icon}
-          </button>
-        </div>
-      )}
+      {msg.role === 'assistant' && <div className="msg-label">Coach</div>}
       <div
         className="msg-bubble"
         dangerouslySetInnerHTML={{ __html: clean.replace(/\n/g, '<br>') }}
       />
+      {msg.role === 'assistant' && clean && (
+        <button
+          className={`speak-btn${isPlaying ? ' playing' : ''}`}
+          onClick={() => onSpeak(index, clean)}
+          aria-label={isPlaying ? 'Stop speaking' : 'Speak this reply'}
+        >
+          {icon} {isPlaying ? 'Stop' : 'Listen'}
+        </button>
+      )}
     </div>
   );
 }
