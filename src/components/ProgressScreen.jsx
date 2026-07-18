@@ -12,10 +12,19 @@ function ProgressScreen({ sessions, onDeleteSession }) {
   const longPressTimer = useRef(null);
   const [take, setTake] = useState(null); // { text, fingerprint }
   const [takeStatus, setTakeStatus] = useState('idle'); // idle | loading | error
+  const [takeCollapsed, setTakeCollapsed] = useState(() => storage.getTakeCollapsed());
 
   useEffect(() => {
     setTake(storage.getCoachTake());
   }, []);
+
+  function toggleTakeCollapsed() {
+    setTakeCollapsed(prev => {
+      const next = !prev;
+      storage.setTakeCollapsed(next);
+      return next;
+    });
+  }
 
   const currentFingerprint = fingerprintFor(sessions);
   const takeStale = take && take.fingerprint !== currentFingerprint;
@@ -76,7 +85,15 @@ function ProgressScreen({ sessions, onDeleteSession }) {
   return (
     <div className="progress-wrap">
       <div className="progress-section">
-        <div className="progress-section-title">Coach's Take</div>
+        <div
+          className="progress-section-title"
+          style={take ? { display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer' } : undefined}
+          onClick={take ? toggleTakeCollapsed : undefined}
+        >
+          <span>Coach's Take</span>
+          {take && <span style={{ color: 'var(--muted)' }}>{takeCollapsed ? '▸' : '▾'}</span>}
+        </div>
+        {!(take && takeCollapsed && takeStatus === 'idle') && (
         <div style={{ padding: '14px 16px' }}>
           {takeStatus === 'loading' && (
             <div className="typing"><div className="dot" /><div className="dot" /><div className="dot" /></div>
@@ -106,6 +123,7 @@ function ProgressScreen({ sessions, onDeleteSession }) {
             <button className="chat-apply-btn" onClick={handleGetTake}>Get Coach's Take</button>
           )}
         </div>
+        )}
       </div>
 
       <ExerciseProgressChart sessions={sessions} />
