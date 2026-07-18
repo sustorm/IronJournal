@@ -122,7 +122,7 @@ export default function CoachChat({ currentDay, allDays, setData, onApplyChange 
 
   function handleApply() {
     if (!pendingChange) return;
-    pendingChange.forEach(c => onApplyChange(c));
+    onApplyChange(pendingChange);
     setPendingChange(null);
   }
 

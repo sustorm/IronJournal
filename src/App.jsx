@@ -13,6 +13,7 @@ import ProgressScreen from './components/ProgressScreen.jsx';
 import EditScreen from './components/EditScreen.jsx';
 import AddExModal from './components/AddExModal.jsx';
 import EditExModal from './components/EditExModal.jsx';
+import BugReportModal from './components/BugReportModal.jsx';
 import Toast from './components/Toast.jsx';
 import LoadingOverlay from './components/LoadingOverlay.jsx';
 
@@ -29,6 +30,7 @@ export default function App() {
   const [currentScreen, setCurrentScreen] = useState('log');
   const [addExModal, setAddExModal] = useState({ open: false, targetDayId: null });
   const [editExModal, setEditExModal] = useState({ open: false, exId: null, dayId: null });
+  const [bugReportOpen, setBugReportOpen] = useState(false);
   const debounceRef = useRef(null);
   const toastRef = useRef(null);
   const addDayFormRef = useRef(null);
@@ -384,67 +386,122 @@ export default function App() {
     showToast('Exercise removed');
   }
 
-  function applyChange({ action, dayId, data }) {
-    // Resolve the target day against the CURRENT program before the update.
-    // The AI often names a different day than the one being viewed — we detect
-    // this and navigate there so the user immediately sees the result.
-    const resolveDay = days =>
-      days.find(d => d.id === dayId) ||
-      days.find(d => d.name.toLowerCase() === (dayId || '').toLowerCase()) ||
-      days.find(d => d.id === currentDayId);
+  // Applies one or a batch of AI-suggested changes atomically: a single state
+  // update and a single Supabase sync for the whole batch, so a multi-action
+  // reorder/rewrite can't leave the program half-applied by a mid-batch race
+  // between React's deferred state updates and per-action Supabase syncs.
+  // Each action is applied inside its own try/catch so one malformed action
+  // (e.g. an unexpected shape from the AI) can't abort the rest of the batch
+  // or crash the app.
+  function applyChange(changeOrChanges) {
+    const changes = Array.isArray(changeOrChanges) ? changeOrChanges : [changeOrChanges];
+    if (!changes.length) return;
 
-    const targetDayId = resolveDay(program.days)?.id || currentDayId;
+    const removedDayIds = new Set();
+    const appliedActions = [];
+    let lastTargetDayId = null;
 
-    // Use functional update so we always mutate the latest state,
-    // not a potentially stale closure snapshot.
     setProgram(prev => {
       const newProg = dc(prev);
-      const day = newProg.days.find(d => d.id === targetDayId);
 
-      if (action === 'add_exercise' && day) {
-        day.exercises.push({ id: uid(), ...data });
-      } else if (action === 'remove_exercise' && day) {
-        day.exercises = day.exercises.filter(e => e.name !== data.name);
-      } else if (action === 'update_exercise' && day) {
-        const ex = day.exercises.find(e => e.name === (data.oldName || data.name));
-        if (ex) {
-          if (data.oldName) resetExerciseSets(targetDayId, ex.id);
-          Object.assign(ex, data);
-          delete ex.oldName;
+      changes.forEach(({ action, dayId, data }) => {
+        try {
+          const resolveDay = () =>
+            newProg.days.find(d => d.id === dayId) ||
+            newProg.days.find(d => d.name.toLowerCase() === (dayId || '').toLowerCase()) ||
+            newProg.days.find(d => d.id === currentDayId);
+
+          if (action === 'add_day') {
+            // Exercises should normally come via add_exercise/set_day_exercises,
+            // but if the AI nests an exercises array here, give each entry a
+            // real unique id instead of letting it through id-less (id-less
+            // exercises collide on the same setData key and corrupt logging).
+            const { exercises, ...rest } = data || {};
+            const newDay = {
+              id: duid(),
+              color: DAY_COLORS[newProg.days.length % DAY_COLORS.length],
+              exercises: Array.isArray(exercises) ? exercises.map(ex => ({ id: uid(), ...ex })) : [],
+              ...rest,
+            };
+            newProg.days.push(newDay);
+            lastTargetDayId = newDay.id;
+            appliedActions.push(action);
+            return;
+          }
+
+          if (action === 'reorder_days') {
+            const order = data?.order || [];
+            const byId = new Map(newProg.days.map(d => [d.id, d]));
+            const reordered = order.map(id => byId.get(id)).filter(Boolean);
+            const remaining = newProg.days.filter(d => !order.includes(d.id));
+            newProg.days = [...reordered, ...remaining];
+            appliedActions.push(action);
+            return;
+          }
+
+          const day = resolveDay();
+          if (!day) {
+            console.warn(`applyChange: could not resolve day for action "${action}" (dayId="${dayId}")`);
+            return;
+          }
+
+          if (action === 'add_exercise') {
+            day.exercises.push({ id: uid(), ...data });
+          } else if (action === 'remove_exercise') {
+            day.exercises = day.exercises.filter(e => e.name !== data.name);
+          } else if (action === 'update_exercise') {
+            const ex = day.exercises.find(e => e.name === (data.oldName || data.name));
+            if (ex) {
+              if (data.oldName) resetExerciseSets(day.id, ex.id);
+              Object.assign(ex, data);
+              delete ex.oldName;
+            }
+          } else if (action === 'rename_day') {
+            if (data.name) day.name = data.name;
+            if (data.focus) day.focus = data.focus;
+          } else if (action === 'remove_day') {
+            newProg.days = newProg.days.filter(d => d.id !== day.id);
+            removedDayIds.add(day.id);
+          } else if (action === 'set_day_exercises') {
+            day.exercises = (data.exercises || []).map(ex => ({ id: uid(), ...ex }));
+          } else {
+            console.warn(`applyChange: unknown action "${action}"`);
+            return;
+          }
+
+          lastTargetDayId = day.id;
+          appliedActions.push(action);
+        } catch (e) {
+          console.warn(`applyChange: action "${action}" failed:`, e);
         }
-      } else if (action === 'rename_day' && day) {
-        if (data.name) day.name = data.name;
-        if (data.focus) day.focus = data.focus;
-      } else if (action === 'add_day') {
-        newProg.days.push({ id: duid(), color: DAY_COLORS[newProg.days.length % DAY_COLORS.length], exercises: [], ...data });
-      } else if (action === 'remove_day' && day) {
-        newProg.days = newProg.days.filter(d => d.id !== dayId);
-      } else if (action === 'set_day_exercises' && day) {
-        day.exercises = (data.exercises || []).map(ex => ({ id: uid(), ...ex }));
-      }
+      });
 
       storage.setProgram(newProg);
       return newProg;
     });
 
-    // Navigate to the affected day so the change is immediately visible.
-    if (['add_exercise', 'remove_exercise', 'update_exercise', 'rename_day', 'set_day_exercises'].includes(action)) {
-      setCurrentDayId(targetDayId);
+    // Navigate to whatever the batch last touched so the change is immediately visible.
+    const NAV_ACTIONS = ['add_exercise', 'remove_exercise', 'update_exercise', 'rename_day', 'set_day_exercises', 'add_day'];
+    if (lastTargetDayId && appliedActions.some(a => NAV_ACTIONS.includes(a)) && !removedDayIds.has(lastTargetDayId)) {
+      setCurrentDayId(lastTargetDayId);
       setCurrentScreen('log');
-    } else if (action === 'remove_day') {
-      if (currentDayId === dayId) {
-        setCurrentDayId(program.days.find(d => d.id !== dayId)?.id || null);
-      }
+    } else if (removedDayIds.has(currentDayId)) {
+      setCurrentDayId(program.days.find(d => !removedDayIds.has(d.id))?.id || null);
     }
 
     const toastMap = {
       add_exercise: 'Exercise added', remove_exercise: 'Exercise removed',
       update_exercise: 'Exercise updated', rename_day: 'Day renamed',
       add_day: 'Day added', remove_day: 'Day removed', set_day_exercises: 'Program updated',
+      reorder_days: 'Days reordered',
     };
-    if (toastMap[action]) showToast(toastMap[action]);
+    if (appliedActions.length === 1) {
+      if (toastMap[appliedActions[0]]) showToast(toastMap[appliedActions[0]]);
+    } else if (appliedActions.length > 1) {
+      showToast('Program updated');
+    }
 
-    if (!isDebugMode) {
+    if (!isDebugMode && appliedActions.length) {
       setSyncStatus('syncing', 'saving…');
       // Read from localStorage (written synchronously above) to get the mutated program.
       const progToSync = storage.getProgram();
@@ -475,6 +532,7 @@ export default function App() {
         onShowProgress={() => showScreen('progress')}
         onShowChat={() => showScreen('chat')}
         onBack={() => showScreen('log')}
+        onReportBug={() => setBugReportOpen(true)}
       />
 
       <DayTabs
@@ -549,6 +607,12 @@ export default function App() {
         onSave={handleEditExSave}
         onDelete={handleEditExDelete}
         onSwap={handleEditExSwap}
+      />
+
+      <BugReportModal
+        open={bugReportOpen}
+        onClose={() => setBugReportOpen(false)}
+        showToast={showToast}
       />
 
       <Toast ref={toastRef} />

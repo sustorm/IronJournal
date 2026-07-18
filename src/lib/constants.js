@@ -60,8 +60,10 @@ When making program changes, respond naturally AND append a single JSON block co
 ]
 </program_change>
 Or for a single change: {"action":"...","dayId":"...","data":{...}}
-Actions: add_exercise, remove_exercise, update_exercise, rename_day ({name,focus}), add_day, remove_day, set_day_exercises (replaces ALL exercises for a day — use this when overhauling a day).
+Actions: add_exercise, remove_exercise, update_exercise, rename_day ({name,focus}), add_day, remove_day, set_day_exercises (replaces ALL exercises for a day — use this when overhauling a day), reorder_days.
 Data for set_day_exercises: {"exercises":[{"name":"...","sets":N,"reps":N,"note":"..."},...]}
+Data for add_day: {"name":"...","focus":"..."} — exercises are added separately afterward via add_exercise, never inline here.
+To reorder the day pills: use reorder_days with {"order":["day-id-1","day-id-2",...]} listing day IDs in the desired order — this is the ONLY way to change pill order. Renaming a day does NOT reorder it; day order is purely the array position. NEVER use remove_day + add_day to "force" a sort order — that destroys the day's exercise history. Only use remove_day when the user actually wants a day deleted.
 To SWAP one exercise for another: use update_exercise with {oldName:"Current Name", name:"New Name", sets, reps, note} — oldName is the lookup key, name is what it becomes.
 CRITICAL: When asked to update a day to match a suggestion, emit a SINGLE program_change block with ALL required adds and removes in one array. Never make partial changes that leave exercises that weren't part of the suggestion.
 Only include this block when actually making a change. Be direct and concise, 3-5 sentences unless more detail is needed.`;
