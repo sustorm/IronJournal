@@ -564,6 +564,7 @@ export default function App() {
           allDays={program.days}
           setData={setData}
           onApplyChange={applyChange}
+          isActive={currentScreen === 'chat'}
         />
       </div>
 

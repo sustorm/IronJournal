@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { sendToCoach } from '../lib/coach.js';
+import { synthesizeSpeech } from '../lib/tts.js';
 
 const QUICK_PROMPTS = [
   'How do I progress?',
@@ -13,13 +14,28 @@ const INITIAL_MSG = {
   content: "Hey! Log your sets above then ask me anything — weights, form, or program changes. I can update your program directly from this chat.",
 };
 
-function MessageBubble({ msg }) {
+function MessageBubble({ msg, index, voiceState, onSpeak }) {
   const clean = msg.content
     .replace(/<program_change>[\s\S]*?<\/program_change>/g, '')
     .trim();
+  const isThisOne = voiceState.idx === index;
+  const icon = isThisOne
+    ? (voiceState.status === 'loading' ? '⋯' : voiceState.status === 'error' ? '⚠️' : '⏹')
+    : '🔊';
   return (
     <div className={`msg ${msg.role}`}>
-      {msg.role === 'assistant' && <div className="msg-label">Coach</div>}
+      {msg.role === 'assistant' && clean && (
+        <div className="msg-label" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+          <span>Coach</span>
+          <button
+            className={`speak-btn${isThisOne && voiceState.status === 'playing' ? ' playing' : ''}`}
+            onClick={() => onSpeak(index, clean)}
+            aria-label={isThisOne && voiceState.status === 'playing' ? 'Stop speaking' : 'Speak this reply'}
+          >
+            {icon}
+          </button>
+        </div>
+      )}
       <div
         className="msg-bubble"
         dangerouslySetInnerHTML={{ __html: clean.replace(/\n/g, '<br>') }}
@@ -40,19 +56,68 @@ function TypingIndicator() {
   );
 }
 
-export default function CoachChat({ currentDay, allDays, setData, onApplyChange }) {
+export default function CoachChat({ currentDay, allDays, setData, onApplyChange, isActive }) {
   const [msgs, setMsgs] = useState([INITIAL_MSG]);
   const [pendingChange, setPendingChange] = useState(null);
   const [typing, setTyping] = useState(false);
   const [input, setInput] = useState('');
+  const [voiceState, setVoiceState] = useState({ idx: null, status: 'idle' }); // idle | loading | playing | error
   const msgsRef = useRef(null);
   const inputRef = useRef(null);
+  const audioRef = useRef(null);
+  const audioUrlRef = useRef(null);
 
   useEffect(() => {
     if (msgsRef.current) {
       setTimeout(() => { msgsRef.current.scrollTop = msgsRef.current.scrollHeight; }, 50);
     }
   }, [msgs, typing]);
+
+  // The chat screen is kept mounted (just hidden) when navigating away, so
+  // stop any playing audio explicitly rather than relying on unmount.
+  useEffect(() => {
+    if (!isActive) stopSpeaking();
+  }, [isActive]);
+
+  function stopSpeaking() {
+    if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current.onended = null;
+      audioRef.current.onerror = null;
+      audioRef.current = null;
+    }
+    if (audioUrlRef.current) {
+      URL.revokeObjectURL(audioUrlRef.current);
+      audioUrlRef.current = null;
+    }
+    setVoiceState({ idx: null, status: 'idle' });
+  }
+
+  async function handleSpeak(idx, text) {
+    if (voiceState.idx === idx && voiceState.status !== 'error') {
+      stopSpeaking();
+      return;
+    }
+    stopSpeaking();
+    setVoiceState({ idx, status: 'loading' });
+    try {
+      const blob = await synthesizeSpeech(text);
+      const url = URL.createObjectURL(blob);
+      audioUrlRef.current = url;
+      const audio = new Audio(url);
+      audioRef.current = audio;
+      audio.onended = stopSpeaking;
+      audio.onerror = stopSpeaking;
+      await audio.play();
+      setVoiceState({ idx, status: 'playing' });
+    } catch (e) {
+      console.warn('Text-to-speech failed:', e);
+      setVoiceState({ idx, status: 'error' });
+      setTimeout(() => {
+        setVoiceState(prev => (prev.idx === idx && prev.status === 'error') ? { idx: null, status: 'idle' } : prev);
+      }, 2500);
+    }
+  }
 
   function buildLogCtx() {
     let ctx = 'Full program (use these exact day IDs in program_change JSON):\n';
@@ -135,7 +200,9 @@ export default function CoachChat({ currentDay, allDays, setData, onApplyChange 
   return (
     <div className="chat-panel">
       <div className="chat-messages" ref={msgsRef}>
-        {msgs.map((m, i) => <MessageBubble key={i} msg={m} />)}
+        {msgs.map((m, i) => (
+          <MessageBubble key={i} msg={m} index={i} voiceState={voiceState} onSpeak={handleSpeak} />
+        ))}
         {typing && <TypingIndicator />}
       </div>
       {pendingChange && (
