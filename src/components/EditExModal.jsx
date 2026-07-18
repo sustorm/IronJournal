@@ -115,9 +115,11 @@ export default function EditExModal({ open, exercise, day, allDays, onClose, onS
         {view === 'confirm' && suggestion && (
           <>
             <div className="modal-title">Swap Exercise?</div>
-            <div className="modal-sub">{exercise.name} — {exercise.sets}×{exercise.reps}</div>
+            <div className="modal-sub">
+              {exercise.name} — {exercise.sets}×{exercise.reps}{exercise.logType === 'duration' ? ' sec' : ''}
+            </div>
             <div className="modal-sub" style={{ color: 'var(--accent)' }}>
-              → {suggestion.name} — {suggestion.sets}×{suggestion.reps}
+              → {suggestion.name} — {suggestion.sets}×{suggestion.reps}{suggestion.logType === 'duration' ? ' sec' : ''}
               {suggestion.note ? ` · ${suggestion.note}` : ''}
             </div>
             {suggestion.reason && <div className="modal-sub">{suggestion.reason}</div>}

@@ -30,14 +30,16 @@ export async function suggestExerciseSwap(exercise, day, allDays) {
   (allDays || []).forEach(d => {
     programCtx += `\n${d.name}${d.focus ? ` (${d.focus})` : ''}${d.id === day?.id ? ' — this is the day being edited' : ''}:\n`;
     (d.exercises || []).forEach(e => {
-      programCtx += `  - ${e.name} (${e.sets}x${e.reps})\n`;
+      const unit = e.logType === 'duration' ? 'sec, timed hold' : 'reps, weight-loaded';
+      programCtx += `  - ${e.name} (${e.sets}x${e.reps} ${unit})\n`;
     });
   });
 
+  const exerciseUnit = exercise.logType === 'duration' ? 'sec (timed hold)' : 'reps (weight-loaded)';
   const userMsg = `Full weekly program (check for redundancy across all days):${programCtx}
 Day being edited: ${day?.name || ''}${day?.focus ? ` (${day.focus})` : ''}
 Other exercises already in this day: ${siblings || 'none'}
-Exercise to replace: ${exercise.name} — ${exercise.sets}x${exercise.reps}${exercise.note ? `, ${exercise.note}` : ''}`;
+Exercise to replace: ${exercise.name} — ${exercise.sets}x${exercise.reps} ${exerciseUnit}${exercise.note ? `, ${exercise.note}` : ''}`;
 
   const res = await fetch('https://api.anthropic.com/v1/messages', {
     method: 'POST',

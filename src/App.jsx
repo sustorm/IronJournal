@@ -373,6 +373,7 @@ export default function App() {
       sets: suggestion.sets,
       reps: suggestion.reps,
       note: suggestion.note || '',
+      logType: suggestion.logType === 'duration' ? 'duration' : suggestion.logType === 'weight' ? 'weight' : ex.logType,
     });
     saveProgram(newProg);
     resetExerciseSets(editExModal.dayId, editExModal.exId);
