@@ -20,7 +20,7 @@ export async function sendToCoach(messages) {
   return (data.content || []).map(b => b.text || '').join('') || 'No response.';
 }
 
-export async function suggestExerciseSwap(exercise, day, allDays) {
+export async function suggestExerciseSwap(exercise, day, allDays, excludeNames = []) {
   const siblings = (day?.exercises || [])
     .filter(e => e.id !== exercise.id)
     .map(e => e.name)
@@ -36,10 +36,13 @@ export async function suggestExerciseSwap(exercise, day, allDays) {
   });
 
   const exerciseUnit = exercise.logType === 'duration' ? 'sec (timed hold)' : 'reps (weight-loaded)';
+  const excludeLine = excludeNames.length
+    ? `\nAlready suggested and rejected this session — do NOT suggest any of these again, pick something meaningfully different (different equipment, angle, or variation, not just a rename): ${excludeNames.join(', ')}`
+    : '';
   const userMsg = `Full weekly program (check for redundancy across all days):${programCtx}
 Day being edited: ${day?.name || ''}${day?.focus ? ` (${day.focus})` : ''}
 Other exercises already in this day: ${siblings || 'none'}
-Exercise to replace: ${exercise.name} — ${exercise.sets}x${exercise.reps} ${exerciseUnit}${exercise.note ? `, ${exercise.note}` : ''}`;
+Exercise to replace: ${exercise.name} — ${exercise.sets}x${exercise.reps} ${exerciseUnit}${exercise.note ? `, ${exercise.note}` : ''}${excludeLine}`;
 
   const res = await fetch('https://api.anthropic.com/v1/messages', {
     method: 'POST',
@@ -52,6 +55,7 @@ Exercise to replace: ${exercise.name} — ${exercise.sets}x${exercise.reps} ${ex
     body: JSON.stringify({
       model: 'claude-sonnet-4-6',
       max_tokens: 300,
+      temperature: 1,
       system: SWAP_SYSTEM_PROMPT,
       messages: [{ role: 'user', content: userMsg }],
     }),

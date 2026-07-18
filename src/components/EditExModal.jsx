@@ -10,11 +10,13 @@ export default function EditExModal({ open, exercise, day, allDays, onClose, onS
   const [view, setView] = useState('edit');
   const [suggestion, setSuggestion] = useState(null);
   const [logType, setLogType] = useState('weight');
+  const [triedNames, setTriedNames] = useState([]);
 
   useEffect(() => {
     if (open && exercise) {
       setView('edit');
       setSuggestion(null);
+      setTriedNames([]);
     }
   }, [open, exercise]);
 
@@ -48,8 +50,9 @@ export default function EditExModal({ open, exercise, day, allDays, onClose, onS
   async function fetchSuggestion() {
     setView('loading');
     try {
-      const s = await suggestExerciseSwap(exercise, day, allDays);
+      const s = await suggestExerciseSwap(exercise, day, allDays, triedNames);
       setSuggestion(s);
+      setTriedNames(prev => [...prev, s.name]);
       setView('confirm');
     } catch (e) {
       console.warn('suggestExerciseSwap failed:', e);

@@ -78,6 +78,7 @@ Suggest ONE alternative exercise that:
 3. Stays in balance with the OTHER exercises already in that same day — don't overload a pattern the day already has plenty of, or leave a pattern the day depended on unaddressed.
 4. Is not redundant with any exercise already present anywhere else in the full weekly program (check all days, not just this one).
 5. Keeps the same logging type (weight-loaded sets vs. a timed hold) as the original unless there's a strong reason to switch — e.g. a plank should become another timed hold, not a rep-counted exercise.
+6. If the user message lists exercises already suggested and rejected this session, treat that as a hard constraint: pick a genuinely different exercise, not a close variant of one already offered (e.g. don't offer "Weighted Plank" right after "Plank" was rejected) — draw from a different piece of equipment, angle, or sub-pattern within the same muscle group each time.
 Respond with ONLY a single JSON object — no prose, no markdown code fences:
 {"name":"...","sets":N,"reps":N,"note":"...","logType":"weight"|"duration","reason":"one short sentence on why this is a good alternative"}`;
 
