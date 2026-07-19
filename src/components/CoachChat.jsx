@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { sendToCoach } from '../lib/coach.js';
+import { sendToCoach, updateCoachMemory } from '../lib/coach.js';
 import { synthesizeSpeech } from '../lib/tts.js';
 
 const QUICK_PROMPTS = [
@@ -63,7 +63,7 @@ function TypingIndicator() {
   );
 }
 
-export default function CoachChat({ currentDay, allDays, setData, onApplyChange, isActive }) {
+export default function CoachChat({ currentDay, allDays, setData, onApplyChange, isActive, memory, onMemoryUpdate }) {
   const [msgs, setMsgs] = useState([INITIAL_MSG]);
   const [pendingChange, setPendingChange] = useState(null);
   const [typing, setTyping] = useState(false);
@@ -206,7 +206,7 @@ export default function CoachChat({ currentDay, allDays, setData, onApplyChange,
 
     let reply = null;
     try {
-      reply = await sendToCoach(apiMsgs);
+      reply = await sendToCoach(apiMsgs, memory);
     } catch {
       setMsgs(prev => [...prev, { role: 'assistant', content: 'Connection error — please try again.' }]);
       setPendingChange(null);
@@ -226,6 +226,15 @@ export default function CoachChat({ currentDay, allDays, setData, onApplyChange,
 
     setPendingChange(change);
     setMsgs(prev => [...prev, { role: 'assistant', content: reply }]);
+
+    // Quietly update the running memory in the background — never blocks
+    // or affects the visible chat, and failures are non-fatal.
+    if (onMemoryUpdate) {
+      const cleanReply = reply.replace(/<program_change>[\s\S]*?<\/program_change>/g, '').trim();
+      updateCoachMemory(memory, text, cleanReply)
+        .then(notes => { if (notes && notes !== memory) onMemoryUpdate(notes); })
+        .catch(e => console.warn('updateCoachMemory failed:', e));
+    }
     setTyping(false);
   }
 

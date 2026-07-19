@@ -24,6 +24,7 @@ export default function App() {
   );
   const [setData, setSetData] = useState(() => storage.getSets());
   const [sessions, setSessions] = useState(() => storage.getSessions());
+  const [coachMemory, setCoachMemory] = useState(() => storage.getCoachMemory());
   const [currentDayId, setCurrentDayId] = useState(
     () => (storage.getProgram() || dc(DEFAULT_PROGRAM)).days[0]?.id || null
   );
@@ -70,6 +71,12 @@ export default function App() {
           setSessions(mapped);
           storage.setSessions(mapped);
         }
+        const { data: memRow, error: me } = await sb
+          .from('coach_memory').select('notes').eq('id', 'singleton').maybeSingle();
+        if (!me && memRow?.notes != null) {
+          setCoachMemory(memRow.notes);
+          storage.setCoachMemory(memRow.notes);
+        }
       } catch (e) {
         console.warn('Supabase load failed, using local cache:', e);
       }
@@ -106,6 +113,16 @@ export default function App() {
           else setSyncStatus('ok', '✓ saved');
         });
     }, 600);
+  }
+
+  // Quiet background update — no sync indicator noise on every chat reply.
+  function saveCoachMemory(notes) {
+    setCoachMemory(notes);
+    storage.setCoachMemory(notes);
+    if (isDebugMode) return;
+    sb.from('coach_memory')
+      .upsert({ id: 'singleton', updated_at: new Date().toISOString(), notes }, { onConflict: 'id' })
+      .then(({ error }) => { if (error) console.warn('coach memory sync failed:', error.message); });
   }
 
   // ── setData mutations ──
@@ -570,6 +587,8 @@ export default function App() {
           setData={setData}
           onApplyChange={applyChange}
           isActive={currentScreen === 'chat'}
+          memory={coachMemory}
+          onMemoryUpdate={saveCoachMemory}
         />
       </div>
 
@@ -579,6 +598,7 @@ export default function App() {
             sessions={sessions}
             program={program}
             onDeleteSession={deleteSession}
+            memory={coachMemory}
           />
         </div>
       )}

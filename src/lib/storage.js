@@ -13,4 +13,6 @@ export const storage = {
   setCoachTake: t => localStorage.setItem(prefix + 'take', JSON.stringify(t)),
   getTakeCollapsed: () => JSON.parse(localStorage.getItem(prefix + 'take_collapsed') || 'false'),
   setTakeCollapsed: c => localStorage.setItem(prefix + 'take_collapsed', JSON.stringify(c)),
+  getCoachMemory: () => localStorage.getItem(prefix + 'memory') || '',
+  setCoachMemory: m => localStorage.setItem(prefix + 'memory', m || ''),
 };

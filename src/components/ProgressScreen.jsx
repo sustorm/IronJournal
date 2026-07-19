@@ -7,7 +7,7 @@ function fingerprintFor(sessions) {
   return `${sessions.length}:${sessions[0]?.id || ''}`;
 }
 
-function ProgressScreen({ sessions, program, onDeleteSession }) {
+function ProgressScreen({ sessions, program, onDeleteSession, memory }) {
   const [confirmDelete, setConfirmDelete] = useState(null); // session object to delete
   const longPressTimer = useRef(null);
   const [take, setTake] = useState(null); // { text, fingerprint }
@@ -73,7 +73,7 @@ function ProgressScreen({ sessions, program, onDeleteSession }) {
       Object.entries(volMap).forEach(([name, weekVols]) => {
         summary += `${name}: ` + weeks.map(w => `${w}=${Math.round(weekVols[w] || 0)}`).join(', ') + '\n';
       });
-      const text = await getProgressTake(summary);
+      const text = await getProgressTake(summary, memory);
       const next = { text, fingerprint: currentFingerprint };
       setTake(next);
       storage.setCoachTake(next);
