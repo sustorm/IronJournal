@@ -55,12 +55,21 @@ function ProgressScreen({ sessions, program, onDeleteSession }) {
           volMap[exRef.name][sess.weekKey] = (volMap[exRef.name][sess.weekKey] || 0) + vol;
         });
       });
+      // Only the weeks that actually have logged sessions — never assume a
+      // fixed 6-week window when the real history is shorter than that.
       const weeks = [...new Set(sessions.map(s => s.weekKey))].sort().slice(-6);
+      const weekLabel = weeks.length === 1 ? '1 week' : `${weeks.length} weeks`;
       let summary = `Sessions logged: ${sessions.length}`;
       if (sessions.length) {
-        summary += ` (most recent: ${sessions[0].date}, oldest of last 6 weeks: ${sessions[sessions.length - 1].date})`;
+        // Sort by weekKey (a reliable YYYY-MM-DD string) rather than trusting
+        // the incoming array's order, which isn't guaranteed oldest/newest-first.
+        const byWeek = [...sessions].sort((a, b) => (a.weekKey || '').localeCompare(b.weekKey || ''));
+        const oldestSession = byWeek[0];
+        const newestSession = byWeek[byWeek.length - 1];
+        const daySpan = Math.max(1, Math.round((new Date(newestSession.date) - new Date(oldestSession.date)) / 86400000) + 1);
+        summary += ` (most recent: ${newestSession.date}, oldest shown: ${oldestSession.date} — actual span: ${daySpan} calendar day${daySpan === 1 ? '' : 's'} across ${weekLabel}. Do not assume a longer history than this.)`;
       }
-      summary += '\nWeekly volume (lbs, weight x reps) by exercise, last 6 weeks:\n';
+      summary += `\nWeekly volume (lbs, weight x reps) by exercise, ${weekLabel} with logged data:\n`;
       Object.entries(volMap).forEach(([name, weekVols]) => {
         summary += `${name}: ` + weeks.map(w => `${w}=${Math.round(weekVols[w] || 0)}`).join(', ') + '\n';
       });
