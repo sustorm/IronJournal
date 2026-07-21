@@ -1,5 +1,6 @@
 import { memo, useEffect, useMemo, useRef, useState } from 'react';
 import ExerciseProgressChart from './ExerciseProgressChart.jsx';
+import SessionDetailModal from './SessionDetailModal.jsx';
 import { storage } from '../lib/storage.js';
 import { getProgressTake } from '../lib/coach.js';
 
@@ -9,7 +10,10 @@ function fingerprintFor(sessions) {
 
 function ProgressScreen({ sessions, program, onDeleteSession, memory }) {
   const [confirmDelete, setConfirmDelete] = useState(null); // session object to delete
+  const [detailSession, setDetailSession] = useState(null); // session object to view
   const longPressTimer = useRef(null);
+  const longPressFiredRef = useRef(false);
+  const touchMovedRef = useRef(false);
   const [take, setTake] = useState(null); // { text, fingerprint }
   const [takeStatus, setTakeStatus] = useState('idle'); // idle | loading | error
   const [takeCollapsed, setTakeCollapsed] = useState(() => storage.getTakeCollapsed());
@@ -85,11 +89,25 @@ function ProgressScreen({ sessions, program, onDeleteSession, memory }) {
   }
 
   function startLongPress(session) {
-    longPressTimer.current = setTimeout(() => setConfirmDelete(session), 500);
+    longPressFiredRef.current = false;
+    touchMovedRef.current = false;
+    longPressTimer.current = setTimeout(() => {
+      longPressFiredRef.current = true;
+      setConfirmDelete(session);
+    }, 500);
   }
 
-  function cancelLongPress() {
+  function cancelLongPressForMove() {
+    touchMovedRef.current = true;
     clearTimeout(longPressTimer.current);
+  }
+
+  // A tap that's neither a long-press (delete) nor a scroll opens the detail view.
+  function endLongPress(session) {
+    clearTimeout(longPressTimer.current);
+    if (!longPressFiredRef.current && !touchMovedRef.current) {
+      setDetailSession(session);
+    }
   }
 
   return (
@@ -148,9 +166,11 @@ function ProgressScreen({ sessions, program, onDeleteSession, memory }) {
               key={s.id || i}
               className="hist-row"
               onTouchStart={e => { e.preventDefault(); startLongPress(s); }}
-              onTouchEnd={cancelLongPress}
-              onTouchMove={cancelLongPress}
+              onTouchEnd={() => endLongPress(s)}
+              onTouchMove={cancelLongPressForMove}
+              onClick={() => setDetailSession(s)}
               onContextMenu={e => { e.preventDefault(); setConfirmDelete(s); }}
+              style={{ cursor: 'pointer' }}
             >
               <span style={{ color: s.color }}>{s.day}</span>
               <span style={{ color: 'var(--muted)' }}>{s.date} · {s.time}</span>
@@ -171,6 +191,11 @@ function ProgressScreen({ sessions, program, onDeleteSession, memory }) {
           </div>
         </div>
       )}
+      <SessionDetailModal
+        session={detailSession}
+        exerciseLogTypes={exerciseLogTypes}
+        onClose={() => setDetailSession(null)}
+      />
     </div>
   );
 }
