@@ -1,5 +1,6 @@
 import { useRef, useEffect, useState } from 'react';
 import LogTypeToggle from './LogTypeToggle.jsx';
+import ReverseProgressToggle from './ReverseProgressToggle.jsx';
 
 export default function AddExModal({ open, onClose, onConfirm }) {
   const nameRef = useRef(null);
@@ -7,6 +8,7 @@ export default function AddExModal({ open, onClose, onConfirm }) {
   const repsRef = useRef(null);
   const noteRef = useRef(null);
   const [logType, setLogType] = useState('weight');
+  const [reverseProgress, setReverseProgress] = useState(false);
 
   useEffect(() => {
     if (open) setTimeout(() => nameRef.current?.focus(), 150);
@@ -32,12 +34,14 @@ export default function AddExModal({ open, onClose, onConfirm }) {
       reps: parseInt(repsRef.current?.value) || 8,
       note: noteRef.current?.value.trim() || '',
       logType,
+      reverseProgress: logType === 'weight' && reverseProgress,
     });
     nameRef.current.value = '';
     if (setsRef.current) setsRef.current.value = '3';
     if (repsRef.current) repsRef.current.value = REPS_DEFAULT.weight;
     if (noteRef.current) noteRef.current.value = '';
     setLogType('weight');
+    setReverseProgress(false);
   }
 
   function handleOverlayClick(e) {
@@ -56,6 +60,9 @@ export default function AddExModal({ open, onClose, onConfirm }) {
           <span className="modal-label">{logType === 'duration' ? 'Sec' : 'Reps'}</span>
           <input ref={repsRef} className="modal-mini" type="number" defaultValue={REPS_DEFAULT.weight} min="1" max={logType === 'duration' ? 600 : 100} />
         </div>
+        {logType === 'weight' && (
+          <ReverseProgressToggle value={reverseProgress} onChange={setReverseProgress} />
+        )}
         <input ref={noteRef} className="modal-input" placeholder="Note (optional)…" />
         <div className="modal-btns">
           <button className="modal-btn secondary" onClick={onClose}>Cancel</button>

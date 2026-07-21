@@ -18,16 +18,18 @@ function ProgressScreen({ sessions, program, onDeleteSession, memory }) {
   const [takeStatus, setTakeStatus] = useState('idle'); // idle | loading | error
   const [takeCollapsed, setTakeCollapsed] = useState(() => storage.getTakeCollapsed());
 
-  // Exercise name -> logType, from the current program. Exercises no longer
-  // in the program (renamed/removed) fall back to 'weight' below.
-  const exerciseLogTypes = useMemo(() => {
-    const map = {};
+  // Exercise name -> logType/reverseProgress, from the current program.
+  // Exercises no longer in the program (renamed/removed) fall back below.
+  const { exerciseLogTypes, exerciseReverseProgress } = useMemo(() => {
+    const logTypes = {};
+    const reverse = {};
     (program?.days || []).forEach(d => {
       (d.exercises || []).forEach(ex => {
-        map[ex.name] = ex.logType === 'duration' ? 'duration' : 'weight';
+        logTypes[ex.name] = ex.logType === 'duration' ? 'duration' : 'weight';
+        reverse[ex.name] = !!ex.reverseProgress;
       });
     });
-    return map;
+    return { exerciseLogTypes: logTypes, exerciseReverseProgress: reverse };
   }, [program]);
 
   useEffect(() => {
@@ -75,7 +77,8 @@ function ProgressScreen({ sessions, program, onDeleteSession, memory }) {
       }
       summary += `\nWeekly volume (lbs, weight x reps) by exercise, ${weekLabel} with logged data:\n`;
       Object.entries(volMap).forEach(([name, weekVols]) => {
-        summary += `${name}: ` + weeks.map(w => `${w}=${Math.round(weekVols[w] || 0)}`).join(', ') + '\n';
+        const reverseNote = exerciseReverseProgress[name] ? ' [ASSISTED — LESS weight = stronger, so DECREASING volume here is improvement, not decline]' : '';
+        summary += `${name}${reverseNote}: ` + weeks.map(w => `${w}=${Math.round(weekVols[w] || 0)}`).join(', ') + '\n';
       });
       const text = await getProgressTake(summary, memory);
       const next = { text, fingerprint: currentFingerprint };
@@ -154,7 +157,11 @@ function ProgressScreen({ sessions, program, onDeleteSession, memory }) {
         )}
       </div>
 
-      <ExerciseProgressChart sessions={sessions} exerciseLogTypes={exerciseLogTypes} />
+      <ExerciseProgressChart
+        sessions={sessions}
+        exerciseLogTypes={exerciseLogTypes}
+        exerciseReverseProgress={exerciseReverseProgress}
+      />
 
       <div className="progress-section">
         <div className="progress-section-title">Session History</div>

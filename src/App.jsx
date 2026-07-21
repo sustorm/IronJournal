@@ -355,11 +355,11 @@ export default function App() {
     saveProgram(newProg);
   }
 
-  function handleAddExConfirm({ name, sets, reps, note, logType }) {
+  function handleAddExConfirm({ name, sets, reps, note, logType, reverseProgress }) {
     const newProg = dc(program);
     const d = newProg.days.find(x => x.id === addExModal.targetDayId);
     if (!d) return;
-    d.exercises.push({ id: uid(), name, sets, reps, note, logType });
+    d.exercises.push({ id: uid(), name, sets, reps, note, logType, reverseProgress });
     saveProgram(newProg);
     setAddExModal({ open: false, targetDayId: null });
     showToast('Exercise added');
@@ -369,12 +369,12 @@ export default function App() {
     setEditExModal({ open: true, exId, dayId: currentDayId });
   }
 
-  function handleEditExSave({ name, sets, reps, note, logType }) {
+  function handleEditExSave({ name, sets, reps, note, logType, reverseProgress }) {
     const newProg = dc(program);
     const d = newProg.days.find(x => x.id === editExModal.dayId);
     const ex = d?.exercises.find(e => e.id === editExModal.exId);
     if (!ex) return;
-    Object.assign(ex, { name, sets, reps, note, logType });
+    Object.assign(ex, { name, sets, reps, note, logType, reverseProgress });
     saveProgram(newProg);
     setEditExModal({ open: false, exId: null, dayId: null });
     showToast('Exercise updated');

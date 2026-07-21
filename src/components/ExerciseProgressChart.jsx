@@ -5,7 +5,9 @@ import { useState, useMemo } from 'react';
 // across sets, since a "reps" multiplier doesn't apply to a time-based hold.
 function computeData(sessions, exerciseName, logType) {
   return [...sessions]
-    .reverse()
+    // Sort explicitly rather than trust the incoming array's order — it's
+    // newest-first in production, but that isn't guaranteed everywhere.
+    .sort((a, b) => (a.weekKey || '').localeCompare(b.weekKey || '') || (new Date(a.date) - new Date(b.date)))
     .reduce((acc, sess) => {
       const exRef = (sess.exercises || []).find(e => e.name === exerciseName);
       if (!exRef) return acc;
@@ -26,7 +28,7 @@ const PAD = { top: 28, right: 16, bottom: 36, left: 16 };
 const IW = VB_W - PAD.left - PAD.right;
 const IH = VB_H - PAD.top - PAD.bottom;
 
-function Chart({ data, unit }) {
+function Chart({ data, unit, reverseProgress }) {
   if (data.length < 2) {
     return (
       <div style={{ padding: '12px 0 4px', color: 'var(--muted)', fontSize: 'var(--fs-sm)' }}>
@@ -59,11 +61,20 @@ function Chart({ data, unit }) {
   const first = data[0].value;
   const last = data[n - 1].value;
   const delta = last - first;
-  const trendColor = delta > 0 ? '#4dffaa' : delta < 0 ? '#ff5566' : '#7878a0';
+  // Arrow always reflects the actual numeric direction; only the color (good
+  // vs. bad) flips for reverse-progress exercises, where less is more.
+  const improving = reverseProgress ? delta < 0 : delta > 0;
+  const declining = reverseProgress ? delta > 0 : delta < 0;
+  const trendColor = improving ? '#4dffaa' : declining ? '#ff5566' : '#7878a0';
   const trendSymbol = delta > 0 ? '↑' : delta < 0 ? '↓' : '→';
 
   return (
     <div>
+      {reverseProgress && (
+        <div style={{ fontSize: 'var(--fs-xs)', color: 'var(--muted)', marginBottom: '4px' }}>
+          Assisted — less weight means stronger
+        </div>
+      )}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: '8px' }}>
         <span style={{ fontSize: 'var(--fs-md)', color: 'var(--text)', fontWeight: 500 }}>
           {Math.round(last).toLocaleString()} {unit}
@@ -139,7 +150,7 @@ function Chart({ data, unit }) {
   );
 }
 
-export default function ExerciseProgressChart({ sessions, exerciseLogTypes }) {
+export default function ExerciseProgressChart({ sessions, exerciseLogTypes, exerciseReverseProgress }) {
   // Only offer exercises with at least 2 logged entries — anything with
   // fewer can't show a trend anyway (see Chart's own "need 2 sessions" state).
   const exercises = useMemo(() => {
@@ -162,6 +173,7 @@ export default function ExerciseProgressChart({ sessions, exerciseLogTypes }) {
 
   const isDuration = exerciseLogTypes?.[selected] === 'duration';
   const unit = isDuration ? 'sec' : 'lbs';
+  const reverseProgress = !isDuration && !!exerciseReverseProgress?.[selected];
 
   const data = useMemo(
     () => computeData(sessions, selected, exerciseLogTypes?.[selected]),
@@ -208,7 +220,7 @@ export default function ExerciseProgressChart({ sessions, exerciseLogTypes }) {
             lineHeight: 1,
           }}>▾</span>
         </div>
-        <Chart data={data} unit={unit} />
+        <Chart data={data} unit={unit} reverseProgress={reverseProgress} />
       </div>
     </div>
   );
