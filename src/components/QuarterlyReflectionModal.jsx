@@ -15,7 +15,7 @@ export default function QuarterlyReflectionModal({ open, status, text, periodSta
         {periodStart && periodEnd && (
           <div className="modal-sub">{formatDate(periodStart)} – {formatDate(periodEnd)}</div>
         )}
-        <div style={{ maxHeight: '55vh', overflowY: 'auto' }}>
+        <div>
           {status === 'loading' && (
             <div className="typing"><div className="dot" /><div className="dot" /><div className="dot" /></div>
           )}

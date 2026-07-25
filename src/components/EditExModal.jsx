@@ -19,6 +19,16 @@ export default function EditExModal({ open, exercise, day, allDays, onClose, onS
   const [logType, setLogType] = useState('weight');
   const [reverseProgress, setReverseProgress] = useState(false);
   const [triedNames, setTriedNames] = useState([]);
+  const rowRefs = useRef([]);
+
+  // Scroll a just-expanded row's full content (including the confirm button)
+  // into view within the modal's own scroll — no nested scroll region to
+  // fight with, so this always lands on the right target.
+  useEffect(() => {
+    if (expandedIdx !== null) {
+      rowRefs.current[expandedIdx]?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+  }, [expandedIdx]);
 
   useEffect(() => {
     if (open && exercise) {
@@ -138,11 +148,15 @@ export default function EditExModal({ open, exercise, day, allDays, onClose, onS
             <div className="modal-sub">
               Replacing: {exercise.name} — {exercise.sets}×{exercise.reps}{exercise.logType === 'duration' ? ' sec' : ''}
             </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '48vh', overflowY: 'auto' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
               {suggestions.map((s, i) => {
                 const expanded = expandedIdx === i;
                 return (
-                  <div key={i} style={{ border: '1px solid var(--border)', borderRadius: '10px', overflow: 'hidden' }}>
+                  <div
+                    key={i}
+                    ref={el => (rowRefs.current[i] = el)}
+                    style={{ border: '1px solid var(--border)', borderRadius: '10px', overflow: 'hidden' }}
+                  >
                     <button
                       onClick={() => setExpandedIdx(expanded ? null : i)}
                       style={{

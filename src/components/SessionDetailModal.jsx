@@ -45,7 +45,7 @@ export default function SessionDetailModal({ session, exerciseLogTypes, onClose 
         <div className="modal">
           <div className="modal-title" style={{ color: session.color }}>{session.day}</div>
           <div className="modal-sub">{session.date} · {session.time}</div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '14px', maxHeight: '55vh', overflowY: 'auto' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
             {hasAnyLoggedSets ? (
               exercises.map(ex => (
                 <ExerciseRows
