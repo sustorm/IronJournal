@@ -15,4 +15,6 @@ export const storage = {
   setTakeCollapsed: c => localStorage.setItem(prefix + 'take_collapsed', JSON.stringify(c)),
   getCoachMemory: () => localStorage.getItem(prefix + 'memory') || '',
   setCoachMemory: m => localStorage.setItem(prefix + 'memory', m || ''),
+  getReflection: () => JSON.parse(localStorage.getItem(prefix + 'reflection') || 'null'),
+  setReflection: r => localStorage.setItem(prefix + 'reflection', JSON.stringify(r)),
 };

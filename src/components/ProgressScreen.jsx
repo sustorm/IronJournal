@@ -1,14 +1,59 @@
 import { memo, useEffect, useMemo, useRef, useState } from 'react';
 import ExerciseProgressChart from './ExerciseProgressChart.jsx';
 import SessionDetailModal from './SessionDetailModal.jsx';
+import QuarterlyReflectionModal from './QuarterlyReflectionModal.jsx';
 import { storage } from '../lib/storage.js';
-import { getProgressTake } from '../lib/coach.js';
+import { getProgressTake, getQuarterlyReflection } from '../lib/coach.js';
+
+const REFLECTION_INTERVAL_DAYS = 90;
+const REFLECTION_SNOOZE_DAYS = 7;
+const REFLECTION_MIN_HISTORY_DAYS = 30; // don't prompt a brand-new user with barely any data
 
 function fingerprintFor(sessions) {
   return `${sessions.length}:${sessions[0]?.id || ''}`;
 }
 
-function ProgressScreen({ sessions, program, onDeleteSession, memory }) {
+function daysSince(iso) {
+  if (!iso) return Infinity;
+  return (Date.now() - new Date(iso).getTime()) / 86400000;
+}
+
+// Total volume per exercise, first vs. last logged value within the period —
+// used as an approximate PR/trend indicator for the reflection, not a single
+// session's snapshot like Coach's Take.
+function buildReflectionSummary(sessions, exerciseLogTypes, exerciseReverseProgress, periodStart) {
+  const inPeriod = sessions.filter(s => new Date(s.date) >= periodStart);
+  const weekKeys = new Set(inPeriod.map(s => s.weekKey));
+  const perExercise = {};
+  inPeriod.forEach(sess => {
+    (sess.exercises || []).forEach(exRef => {
+      const isDuration = exerciseLogTypes[exRef.name] === 'duration';
+      const rows = sess.sets?.[exRef.id] || [];
+      const value = isDuration
+        ? rows.reduce((s, r) => s + (parseFloat(r.weight) || 0), 0)
+        : rows.reduce((s, r) => s + (parseFloat(r.weight) || 0) * r.reps, 0);
+      if (!value) return;
+      if (!perExercise[exRef.name]) perExercise[exRef.name] = [];
+      perExercise[exRef.name].push({ date: sess.date, weekKey: sess.weekKey, value });
+    });
+  });
+  Object.values(perExercise).forEach(arr =>
+    arr.sort((a, b) => (a.weekKey || '').localeCompare(b.weekKey || '') || (new Date(a.date) - new Date(b.date)))
+  );
+
+  const avgPerWeek = weekKeys.size ? (inPeriod.length / weekKeys.size).toFixed(1) : '0';
+  let summary = `Period: ${periodStart.toLocaleDateString()} to ${new Date().toLocaleDateString()}\n`;
+  summary += `Sessions logged: ${inPeriod.length} across ${weekKeys.size} distinct week${weekKeys.size === 1 ? '' : 's'} (~${avgPerWeek} sessions/week average)\n\n`;
+  summary += 'Per-exercise trend (first logged volume this period -> last logged volume this period):\n';
+  Object.entries(perExercise).forEach(([name, arr]) => {
+    const tag = exerciseReverseProgress[name] ? ' [ASSISTED]' : '';
+    const unit = exerciseLogTypes[name] === 'duration' ? 'sec' : 'lbs (vol)';
+    summary += `${name}${tag}: ${Math.round(arr[0].value)} -> ${Math.round(arr[arr.length - 1].value)} ${unit} (${arr.length} sessions)\n`;
+  });
+  return summary;
+}
+
+function ProgressScreen({ sessions, program, onDeleteSession, memory, reflection, onReflectionUpdate }) {
   const [confirmDelete, setConfirmDelete] = useState(null); // session object to delete
   const [detailSession, setDetailSession] = useState(null); // session object to view
   const longPressTimer = useRef(null);
@@ -17,6 +62,8 @@ function ProgressScreen({ sessions, program, onDeleteSession, memory }) {
   const [take, setTake] = useState(null); // { text, fingerprint }
   const [takeStatus, setTakeStatus] = useState('idle'); // idle | loading | error
   const [takeCollapsed, setTakeCollapsed] = useState(() => storage.getTakeCollapsed());
+  const [reflectionModalOpen, setReflectionModalOpen] = useState(false);
+  const [reflectionStatus, setReflectionStatus] = useState('idle'); // idle | loading | error
 
   // Exercise name -> logType/reverseProgress, from the current program.
   // Exercises no longer in the program (renamed/removed) fall back below.
@@ -31,6 +78,50 @@ function ProgressScreen({ sessions, program, onDeleteSession, memory }) {
     });
     return { exerciseLogTypes: logTypes, exerciseReverseProgress: reverse };
   }, [program]);
+
+  const sortedByWeek = useMemo(
+    () => [...sessions].sort((a, b) => (a.weekKey || '').localeCompare(b.weekKey || '')),
+    [sessions]
+  );
+
+  const reflectionDue = useMemo(() => {
+    if (!sessions.length) return false;
+    if (reflection?.lastSnoozedAt && daysSince(reflection.lastSnoozedAt) < REFLECTION_SNOOZE_DAYS) return false;
+    if (reflection?.lastGeneratedAt) return daysSince(reflection.lastGeneratedAt) >= REFLECTION_INTERVAL_DAYS;
+    const earliest = sortedByWeek[0];
+    return !!earliest && daysSince(earliest.date) >= REFLECTION_MIN_HISTORY_DAYS;
+  }, [sessions, reflection, sortedByWeek]);
+
+  function getReflectionPeriodStart() {
+    if (reflection?.lastGeneratedAt) return new Date(reflection.lastGeneratedAt);
+    const earliest = sortedByWeek[0];
+    return earliest ? new Date(earliest.date) : new Date(Date.now() - REFLECTION_INTERVAL_DAYS * 86400000);
+  }
+
+  async function handleGenerateReflection() {
+    setReflectionStatus('loading');
+    try {
+      const periodStart = getReflectionPeriodStart();
+      const summary = buildReflectionSummary(sessions, exerciseLogTypes, exerciseReverseProgress, periodStart);
+      const text = await getQuarterlyReflection(summary, memory);
+      onReflectionUpdate({
+        lastGeneratedAt: new Date().toISOString(),
+        lastSnoozedAt: null,
+        text,
+        periodStart: periodStart.toISOString(),
+        periodEnd: new Date().toISOString(),
+      });
+      setReflectionStatus('idle');
+    } catch (e) {
+      console.warn('getQuarterlyReflection failed:', e);
+      setReflectionStatus('error');
+    }
+  }
+
+  function handleSnoozeReflection(e) {
+    e.stopPropagation();
+    onReflectionUpdate({ ...(reflection || {}), lastSnoozedAt: new Date().toISOString() });
+  }
 
   useEffect(() => {
     setTake(storage.getCoachTake());
@@ -67,11 +158,10 @@ function ProgressScreen({ sessions, program, onDeleteSession, memory }) {
       const weekLabel = weeks.length === 1 ? '1 week' : `${weeks.length} weeks`;
       let summary = `Sessions logged: ${sessions.length}`;
       if (sessions.length) {
-        // Sort by weekKey (a reliable YYYY-MM-DD string) rather than trusting
+        // Sorted by weekKey (a reliable YYYY-MM-DD string) rather than trusting
         // the incoming array's order, which isn't guaranteed oldest/newest-first.
-        const byWeek = [...sessions].sort((a, b) => (a.weekKey || '').localeCompare(b.weekKey || ''));
-        const oldestSession = byWeek[0];
-        const newestSession = byWeek[byWeek.length - 1];
+        const oldestSession = sortedByWeek[0];
+        const newestSession = sortedByWeek[sortedByWeek.length - 1];
         const daySpan = Math.max(1, Math.round((new Date(newestSession.date) - new Date(oldestSession.date)) / 86400000) + 1);
         summary += ` (most recent: ${newestSession.date}, oldest shown: ${oldestSession.date} — actual span: ${daySpan} calendar day${daySpan === 1 ? '' : 's'} across ${weekLabel}. Do not assume a longer history than this.)`;
       }
@@ -115,6 +205,34 @@ function ProgressScreen({ sessions, program, onDeleteSession, memory }) {
 
   return (
     <div className="progress-wrap">
+      {reflectionDue && (
+        <div
+          className="progress-section"
+          style={{ padding: '14px 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px', cursor: 'pointer' }}
+          onClick={() => setReflectionModalOpen(true)}
+        >
+          <div>
+            <div style={{ fontSize: 'var(--fs-sm)', color: 'var(--text)' }}>🗓️ Ready for a quarterly check-in?</div>
+            <div style={{ fontSize: 'var(--fs-xs)', color: 'var(--muted)', marginTop: '2px' }}>Tap for a deeper look at your progress</div>
+          </div>
+          <button
+            onClick={handleSnoozeReflection}
+            aria-label="Not now"
+            style={{ background: 'transparent', border: 'none', color: 'var(--muted)', fontSize: '18px', cursor: 'pointer', padding: '4px', lineHeight: 1 }}
+          >
+            ✕
+          </button>
+        </div>
+      )}
+      {!reflectionDue && reflection?.text && (
+        <div
+          className="progress-section"
+          style={{ padding: '14px 16px', cursor: 'pointer', fontSize: 'var(--fs-sm)', color: 'var(--muted)' }}
+          onClick={() => setReflectionModalOpen(true)}
+        >
+          📄 Quarterly reflection available — tap to view
+        </div>
+      )}
       <div className="progress-section">
         <div
           className="progress-section-title"
@@ -202,6 +320,15 @@ function ProgressScreen({ sessions, program, onDeleteSession, memory }) {
         session={detailSession}
         exerciseLogTypes={exerciseLogTypes}
         onClose={() => setDetailSession(null)}
+      />
+      <QuarterlyReflectionModal
+        open={reflectionModalOpen}
+        status={reflectionStatus}
+        text={reflection?.text}
+        periodStart={reflection?.periodStart}
+        periodEnd={reflection?.periodEnd}
+        onGenerate={handleGenerateReflection}
+        onClose={() => setReflectionModalOpen(false)}
       />
     </div>
   );

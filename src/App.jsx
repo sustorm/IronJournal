@@ -25,6 +25,7 @@ export default function App() {
   const [setData, setSetData] = useState(() => storage.getSets());
   const [sessions, setSessions] = useState(() => storage.getSessions());
   const [coachMemory, setCoachMemory] = useState(() => storage.getCoachMemory());
+  const [reflection, setReflection] = useState(() => storage.getReflection());
   const [currentDayId, setCurrentDayId] = useState(
     () => (storage.getProgram() || dc(DEFAULT_PROGRAM)).days[0]?.id || null
   );
@@ -77,6 +78,19 @@ export default function App() {
           setCoachMemory(memRow.notes);
           storage.setCoachMemory(memRow.notes);
         }
+        const { data: reflRow, error: re } = await sb
+          .from('coach_reflections').select('*').eq('id', 'singleton').maybeSingle();
+        if (!re && reflRow) {
+          const mapped = {
+            lastGeneratedAt: reflRow.last_generated_at,
+            lastSnoozedAt: reflRow.last_snoozed_at,
+            text: reflRow.text,
+            periodStart: reflRow.period_start,
+            periodEnd: reflRow.period_end,
+          };
+          setReflection(mapped);
+          storage.setReflection(mapped);
+        }
       } catch (e) {
         console.warn('Supabase load failed, using local cache:', e);
       }
@@ -123,6 +137,23 @@ export default function App() {
     sb.from('coach_memory')
       .upsert({ id: 'singleton', updated_at: new Date().toISOString(), notes }, { onConflict: 'id' })
       .then(({ error }) => { if (error) console.warn('coach memory sync failed:', error.message); });
+  }
+
+  function saveReflection(next) {
+    setReflection(next);
+    storage.setReflection(next);
+    if (isDebugMode) return;
+    sb.from('coach_reflections')
+      .upsert({
+        id: 'singleton',
+        updated_at: new Date().toISOString(),
+        last_generated_at: next.lastGeneratedAt,
+        last_snoozed_at: next.lastSnoozedAt,
+        text: next.text,
+        period_start: next.periodStart,
+        period_end: next.periodEnd,
+      }, { onConflict: 'id' })
+      .then(({ error }) => { if (error) console.warn('reflection sync failed:', error.message); });
   }
 
   // ── setData mutations ──
@@ -599,6 +630,8 @@ export default function App() {
             program={program}
             onDeleteSession={deleteSession}
             memory={coachMemory}
+            reflection={reflection}
+            onReflectionUpdate={saveReflection}
           />
         </div>
       )}

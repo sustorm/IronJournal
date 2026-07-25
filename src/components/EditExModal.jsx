@@ -3,13 +3,18 @@ import { suggestExerciseSwap } from '../lib/coach.js';
 import LogTypeToggle from './LogTypeToggle.jsx';
 import ReverseProgressToggle from './ReverseProgressToggle.jsx';
 
+function demoUrl(name) {
+  return `https://www.youtube.com/results?search_query=${encodeURIComponent(`${name} exercise form tutorial`)}`;
+}
+
 export default function EditExModal({ open, exercise, day, allDays, onClose, onSave, onDelete, onSwap }) {
   const nameRef = useRef(null);
   const setsRef = useRef(null);
   const repsRef = useRef(null);
   const noteRef = useRef(null);
   const [view, setView] = useState('edit');
-  const [suggestion, setSuggestion] = useState(null);
+  const [suggestions, setSuggestions] = useState(null);
+  const [expandedIdx, setExpandedIdx] = useState(null);
   const [logType, setLogType] = useState('weight');
   const [reverseProgress, setReverseProgress] = useState(false);
   const [triedNames, setTriedNames] = useState([]);
@@ -17,14 +22,15 @@ export default function EditExModal({ open, exercise, day, allDays, onClose, onS
   useEffect(() => {
     if (open && exercise) {
       setView('edit');
-      setSuggestion(null);
+      setSuggestions(null);
+      setExpandedIdx(null);
       setTriedNames([]);
     }
   }, [open, exercise]);
 
   // Edit-view inputs are conditionally unmounted (see render below) while the
-  // Swap flow shows its loading/confirm views, so they need repopulating
-  // every time the modal returns to the edit view — not just on first open.
+  // Swap flow shows its loading/list views, so they need repopulating every
+  // time the modal returns to the edit view — not just on first open.
   useEffect(() => {
     if (view === 'edit' && exercise) {
       if (nameRef.current) nameRef.current.value = exercise.name;
@@ -51,23 +57,25 @@ export default function EditExModal({ open, exercise, day, allDays, onClose, onS
     if (e.target === e.currentTarget) onClose();
   }
 
-  async function fetchSuggestion() {
+  async function fetchSuggestions() {
     setView('loading');
     try {
-      const s = await suggestExerciseSwap(exercise, day, allDays, triedNames);
-      setSuggestion(s);
-      setTriedNames(prev => [...prev, s.name]);
-      setView('confirm');
+      const list = await suggestExerciseSwap(exercise, day, allDays, triedNames);
+      setSuggestions(list);
+      setExpandedIdx(null);
+      setTriedNames(prev => [...prev, ...list.map(s => s.name)]);
+      setView('list');
     } catch (e) {
       console.warn('suggestExerciseSwap failed:', e);
       setView('error');
     }
   }
 
-  function handleConfirmSwap() {
+  function handleConfirmSwap(suggestion) {
     onSwap(suggestion);
     setView('edit');
-    setSuggestion(null);
+    setSuggestions(null);
+    setExpandedIdx(null);
   }
 
   return (
@@ -88,7 +96,7 @@ export default function EditExModal({ open, exercise, day, allDays, onClose, onS
               <ReverseProgressToggle value={reverseProgress} onChange={setReverseProgress} />
             )}
             <input ref={noteRef} className="modal-input" placeholder="Note (optional)…" />
-            <button className="modal-btn secondary" style={{ width: '100%' }} onClick={fetchSuggestion}>
+            <button className="modal-btn secondary" style={{ width: '100%' }} onClick={fetchSuggestions}>
               🔀 Swap
             </button>
             <div className="modal-btns">
@@ -106,40 +114,77 @@ export default function EditExModal({ open, exercise, day, allDays, onClose, onS
 
         {view === 'loading' && (
           <>
-            <div className="modal-title">Finding an alternative…</div>
+            <div className="modal-title">Finding alternatives…</div>
             <div className="typing"><div className="dot" /><div className="dot" /><div className="dot" /></div>
           </>
         )}
 
         {view === 'error' && (
           <>
-            <div className="modal-title">Couldn't get a suggestion</div>
+            <div className="modal-title">Couldn't get suggestions</div>
             <div className="modal-sub">Connection error — please try again.</div>
             <div className="modal-btns">
               <button className="modal-btn secondary" onClick={() => setView('edit')}>Cancel</button>
-              <button className="modal-btn primary" onClick={fetchSuggestion}>Retry</button>
+              <button className="modal-btn primary" onClick={fetchSuggestions}>Retry</button>
             </div>
           </>
         )}
 
-        {view === 'confirm' && suggestion && (
+        {view === 'list' && suggestions && (
           <>
             <div className="modal-title">Swap Exercise?</div>
             <div className="modal-sub">
-              {exercise.name} — {exercise.sets}×{exercise.reps}{exercise.logType === 'duration' ? ' sec' : ''}
+              Replacing: {exercise.name} — {exercise.sets}×{exercise.reps}{exercise.logType === 'duration' ? ' sec' : ''}
             </div>
-            <div className="modal-sub" style={{ color: 'var(--accent)' }}>
-              → {suggestion.name} — {suggestion.sets}×{suggestion.reps}{suggestion.logType === 'duration' ? ' sec' : ''}
-              {suggestion.note ? ` · ${suggestion.note}` : ''}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '48vh', overflowY: 'auto' }}>
+              {suggestions.map((s, i) => {
+                const expanded = expandedIdx === i;
+                return (
+                  <div key={i} style={{ border: '1px solid var(--border)', borderRadius: '10px', overflow: 'hidden' }}>
+                    <button
+                      onClick={() => setExpandedIdx(expanded ? null : i)}
+                      style={{
+                        width: '100%', textAlign: 'left', background: expanded ? 'var(--faint)' : 'transparent',
+                        border: 'none', padding: '12px 14px', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                        cursor: 'pointer', color: 'var(--text)', fontFamily: "'DM Mono', monospace", fontSize: 'var(--fs-sm)',
+                      }}
+                    >
+                      <span>{i + 1}. {s.name}</span>
+                      <span style={{ color: 'var(--muted)' }}>{expanded ? '▾' : '▸'}</span>
+                    </button>
+                    {expanded && (
+                      <div style={{ padding: '0 14px 14px' }}>
+                        <div className="modal-sub" style={{ color: 'var(--accent)' }}>
+                          {s.sets}×{s.reps}{s.logType === 'duration' ? ' sec' : ''}{s.note ? ` · ${s.note}` : ''}
+                        </div>
+                        {s.reason && <div className="modal-sub">{s.reason}</div>}
+                        <a
+                          href={demoUrl(s.name)}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          style={{ display: 'inline-block', marginTop: '8px', fontSize: 'var(--fs-xs)', color: 'var(--accent)', textDecoration: 'none' }}
+                        >
+                          ▶ Watch a demo
+                        </a>
+                        <button
+                          className="modal-btn primary"
+                          style={{ width: '100%', marginTop: '10px' }}
+                          onClick={() => handleConfirmSwap(s)}
+                        >
+                          Swap in this exercise
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
             </div>
-            {suggestion.reason && <div className="modal-sub">{suggestion.reason}</div>}
-            <button className="modal-btn secondary" style={{ width: '100%' }} onClick={fetchSuggestion}>
-              🔀 Try another
+            <button className="modal-btn secondary" style={{ width: '100%' }} onClick={fetchSuggestions}>
+              🔄 More options
             </button>
-            <div className="modal-btns">
-              <button className="modal-btn secondary" onClick={() => setView('edit')}>Cancel</button>
-              <button className="modal-btn primary" onClick={handleConfirmSwap}>Confirm swap</button>
-            </div>
+            <button className="modal-btn secondary" style={{ width: '100%' }} onClick={() => { setView('edit'); setSuggestions(null); setExpandedIdx(null); }}>
+              Cancel
+            </button>
           </>
         )}
       </div>

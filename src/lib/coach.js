@@ -1,4 +1,4 @@
-import { SYSTEM_PROMPT, SWAP_SYSTEM_PROMPT, PROGRESS_TAKE_SYSTEM_PROMPT, MEMORY_UPDATE_SYSTEM_PROMPT } from './constants.js';
+import { SYSTEM_PROMPT, SWAP_SYSTEM_PROMPT, PROGRESS_TAKE_SYSTEM_PROMPT, QUARTERLY_REFLECTION_SYSTEM_PROMPT, MEMORY_UPDATE_SYSTEM_PROMPT } from './constants.js';
 
 function withMemory(basePrompt, memory) {
   return memory
@@ -43,7 +43,7 @@ export async function suggestExerciseSwap(exercise, day, allDays, excludeNames =
 
   const exerciseUnit = exercise.logType === 'duration' ? 'sec (timed hold)' : 'reps (weight-loaded)';
   const excludeLine = excludeNames.length
-    ? `\nAlready suggested and rejected this session — do NOT suggest any of these again, pick something meaningfully different (different equipment, angle, or variation, not just a rename): ${excludeNames.join(', ')}`
+    ? `\nAlready shown in a previous batch this session — do NOT include any of these again or a close variant of one: ${excludeNames.join(', ')}`
     : '';
   const userMsg = `Full weekly program (check for redundancy across all days):${programCtx}
 Day being edited: ${day?.name || ''}${day?.focus ? ` (${day.focus})` : ''}
@@ -60,7 +60,7 @@ Exercise to replace: ${exercise.name} — ${exercise.sets}x${exercise.reps} ${ex
     },
     body: JSON.stringify({
       model: 'claude-sonnet-4-6',
-      max_tokens: 300,
+      max_tokens: 1500,
       temperature: 1,
       system: SWAP_SYSTEM_PROMPT,
       messages: [{ role: 'user', content: userMsg }],
@@ -69,7 +69,8 @@ Exercise to replace: ${exercise.name} — ${exercise.sets}x${exercise.reps} ${ex
   const data = await res.json();
   const text = (data.content || []).map(b => b.text || '').join('').trim();
   const clean = text.replace(/^```json?\s*|```$/g, '').trim();
-  return JSON.parse(clean);
+  const parsed = JSON.parse(clean);
+  return Array.isArray(parsed) ? parsed : [parsed];
 }
 
 export async function getProgressTake(summary, memory) {
@@ -83,8 +84,32 @@ export async function getProgressTake(summary, memory) {
     },
     body: JSON.stringify({
       model: 'claude-sonnet-4-6',
-      max_tokens: 400,
+      // Backstop above the prompt's own ~70-word limit, with headroom so a
+      // slightly-over response still finishes its sentence instead of
+      // getting cut off mid-word (400 previously left room to ramble for
+      // several paragraphs; too tight a cap truncates instead).
+      max_tokens: 300,
       system: withMemory(PROGRESS_TAKE_SYSTEM_PROMPT, memory),
+      messages: [{ role: 'user', content: summary }],
+    }),
+  });
+  const data = await res.json();
+  return (data.content || []).map(b => b.text || '').join('').trim() || 'No response.';
+}
+
+export async function getQuarterlyReflection(summary, memory) {
+  const res = await fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'x-api-key': import.meta.env.VITE_ANTHROPIC_API_KEY,
+      'anthropic-version': '2023-06-01',
+      'anthropic-dangerous-direct-browser-access': 'true',
+    },
+    body: JSON.stringify({
+      model: 'claude-sonnet-4-6',
+      max_tokens: 1200,
+      system: withMemory(QUARTERLY_REFLECTION_SYSTEM_PROMPT, memory),
       messages: [{ role: 'user', content: summary }],
     }),
   });
