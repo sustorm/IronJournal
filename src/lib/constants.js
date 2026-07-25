@@ -79,8 +79,9 @@ Suggest UP TO 10 alternative exercises, ordered best-first by relevance and effe
 4. Is not redundant with any exercise already present anywhere else in the full weekly program (check all days, not just this one).
 5. Keeps the same logging type (weight-loaded sets vs. a timed hold) as the original unless there's a strong reason to switch — e.g. a plank alternative should be another timed hold, not a rep-counted exercise.
 Make the 10 genuinely diverse — different equipment, angles, and sub-patterns within the same muscle group — not 10 near-identical variations of one idea. If the user message lists exercises already shown in a previous batch, treat that as a hard constraint: don't repeat any of them or offer a close variant of one (e.g. don't include "Weighted Plank" if "Plank" was already shown).
+BE TERSE — this is a 10-item list, not 10 essays. "note" is a single short form cue, 8 words max. "reason" is one short phrase, 12 words max. No filler, no restating the exercise name, no multi-clause sentences.
 Respond with ONLY a JSON array — no prose, no markdown code fences, no wrapping object:
-[{"name":"...","sets":N,"reps":N,"note":"...","logType":"weight"|"duration","reason":"one short sentence on why this is a good alternative and how it compares to the others"}, ...]`;
+[{"name":"...","sets":N,"reps":N,"note":"...","logType":"weight"|"duration","reason":"..."}, ...]`;
 
 export const PROGRESS_TAKE_SYSTEM_PROMPT = `You are a strength coach for this specific lifter:
 - 36yo female, ectomorph, 5ft6, 130 lbs. Goal: body recomp, not competitive.

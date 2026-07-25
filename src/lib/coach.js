@@ -50,22 +50,37 @@ Day being edited: ${day?.name || ''}${day?.focus ? ` (${day.focus})` : ''}
 Other exercises already in this day: ${siblings || 'none'}
 Exercise to replace: ${exercise.name} — ${exercise.sets}x${exercise.reps} ${exerciseUnit}${exercise.note ? `, ${exercise.note}` : ''}${excludeLine}`;
 
-  const res = await fetch('https://api.anthropic.com/v1/messages', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'x-api-key': import.meta.env.VITE_ANTHROPIC_API_KEY,
-      'anthropic-version': '2023-06-01',
-      'anthropic-dangerous-direct-browser-access': 'true',
-    },
-    body: JSON.stringify({
-      model: 'claude-sonnet-4-6',
-      max_tokens: 1500,
-      temperature: 1,
-      system: SWAP_SYSTEM_PROMPT,
-      messages: [{ role: 'user', content: userMsg }],
-    }),
-  });
+  // 10 items with verbose notes/reasons was pushing generation past 20-30s
+  // and occasionally timing out. Terser per-item output (see prompt) plus a
+  // tighter cap gets the same 10 results back much faster; a client-side
+  // abort turns a hang into a clear error instead of an indefinite wait.
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 25000);
+  let res;
+  try {
+    res = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': import.meta.env.VITE_ANTHROPIC_API_KEY,
+        'anthropic-version': '2023-06-01',
+        'anthropic-dangerous-direct-browser-access': 'true',
+      },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-6',
+        max_tokens: 900,
+        temperature: 1,
+        system: SWAP_SYSTEM_PROMPT,
+        messages: [{ role: 'user', content: userMsg }],
+      }),
+      signal: controller.signal,
+    });
+  } catch (e) {
+    if (e.name === 'AbortError') throw new Error('Request took too long — please try again.', { cause: e });
+    throw e;
+  } finally {
+    clearTimeout(timeout);
+  }
   const data = await res.json();
   const text = (data.content || []).map(b => b.text || '').join('').trim();
   const clean = text.replace(/^```json?\s*|```$/g, '').trim();
