@@ -114,8 +114,8 @@ export default function EditExModal({ open, exercise, day, allDays, onClose, onS
 
         {view === 'loading' && (
           <>
-            <div className="modal-title">Finding 10 alternatives…</div>
-            <div className="modal-sub">Ranking a full list takes a bit longer than usual — up to ~15s.</div>
+            <div className="modal-title">Finding 5 alternatives…</div>
+            <div className="modal-sub">Ranking a list takes a bit longer than usual — up to ~10s.</div>
             <div className="typing"><div className="dot" /><div className="dot" /><div className="dot" /></div>
           </>
         )}

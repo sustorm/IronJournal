@@ -68,7 +68,7 @@ Exercise to replace: ${exercise.name} — ${exercise.sets}x${exercise.reps} ${ex
       },
       body: JSON.stringify({
         model: 'claude-sonnet-4-6',
-        max_tokens: 900,
+        max_tokens: 550,
         temperature: 1,
         system: SWAP_SYSTEM_PROMPT,
         messages: [{ role: 'user', content: userMsg }],
