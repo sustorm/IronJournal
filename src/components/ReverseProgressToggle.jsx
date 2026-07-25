@@ -2,7 +2,7 @@ export default function ReverseProgressToggle({ value, onChange }) {
   return (
     <label
       title="Less weight = stronger (e.g. assisted pull-ups)"
-      style={{ display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer', flexShrink: 0 }}
+      style={{ display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer', flexShrink: 0, marginLeft: 'auto' }}
     >
       <input
         type="checkbox"
