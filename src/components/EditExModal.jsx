@@ -15,6 +15,7 @@ export default function EditExModal({ open, exercise, day, allDays, onClose, onS
   const [view, setView] = useState('edit');
   const [suggestions, setSuggestions] = useState(null);
   const [expandedIdx, setExpandedIdx] = useState(null);
+  const [errorMessage, setErrorMessage] = useState('');
   const [logType, setLogType] = useState('weight');
   const [reverseProgress, setReverseProgress] = useState(false);
   const [triedNames, setTriedNames] = useState([]);
@@ -67,6 +68,7 @@ export default function EditExModal({ open, exercise, day, allDays, onClose, onS
       setView('list');
     } catch (e) {
       console.warn('suggestExerciseSwap failed:', e);
+      setErrorMessage(e.message || 'Connection error — please try again.');
       setView('error');
     }
   }
@@ -91,13 +93,13 @@ export default function EditExModal({ open, exercise, day, allDays, onClose, onS
               <input ref={setsRef} className="modal-mini" type="number" min="1" max="20" />
               <span className="modal-label">{logType === 'duration' ? 'Sec' : 'Reps'}</span>
               <input ref={repsRef} className="modal-mini" type="number" min="1" max={logType === 'duration' ? 600 : 100} />
+              {logType === 'weight' && (
+                <ReverseProgressToggle value={reverseProgress} onChange={setReverseProgress} />
+              )}
             </div>
-            {logType === 'weight' && (
-              <ReverseProgressToggle value={reverseProgress} onChange={setReverseProgress} />
-            )}
             <input ref={noteRef} className="modal-input" placeholder="Note (optional)…" />
             <button className="modal-btn secondary" style={{ width: '100%' }} onClick={fetchSuggestions}>
-              🔀 Swap
+              🔀 Find Alternatives
             </button>
             <div className="modal-btns">
               <button
@@ -114,8 +116,7 @@ export default function EditExModal({ open, exercise, day, allDays, onClose, onS
 
         {view === 'loading' && (
           <>
-            <div className="modal-title">Finding 5 alternatives…</div>
-            <div className="modal-sub">Ranking a list takes a bit longer than usual — up to ~10s.</div>
+            <div className="modal-title">Finding alternatives…</div>
             <div className="typing"><div className="dot" /><div className="dot" /><div className="dot" /></div>
           </>
         )}
@@ -123,7 +124,7 @@ export default function EditExModal({ open, exercise, day, allDays, onClose, onS
         {view === 'error' && (
           <>
             <div className="modal-title">Couldn't get suggestions</div>
-            <div className="modal-sub">Connection error — please try again.</div>
+            <div className="modal-sub">{errorMessage || 'Connection error — please try again.'}</div>
             <div className="modal-btns">
               <button className="modal-btn secondary" onClick={() => setView('edit')}>Cancel</button>
               <button className="modal-btn primary" onClick={fetchSuggestions}>Retry</button>

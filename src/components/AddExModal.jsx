@@ -59,10 +59,10 @@ export default function AddExModal({ open, onClose, onConfirm }) {
           <input ref={setsRef} className="modal-mini" type="number" defaultValue="3" min="1" max="20" />
           <span className="modal-label">{logType === 'duration' ? 'Sec' : 'Reps'}</span>
           <input ref={repsRef} className="modal-mini" type="number" defaultValue={REPS_DEFAULT.weight} min="1" max={logType === 'duration' ? 600 : 100} />
+          {logType === 'weight' && (
+            <ReverseProgressToggle value={reverseProgress} onChange={setReverseProgress} />
+          )}
         </div>
-        {logType === 'weight' && (
-          <ReverseProgressToggle value={reverseProgress} onChange={setReverseProgress} />
-        )}
         <input ref={noteRef} className="modal-input" placeholder="Note (optional)…" />
         <div className="modal-btns">
           <button className="modal-btn secondary" onClick={onClose}>Cancel</button>

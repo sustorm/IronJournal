@@ -83,8 +83,16 @@ Exercise to replace: ${exercise.name} — ${exercise.sets}x${exercise.reps} ${ex
   }
   const data = await res.json();
   const text = (data.content || []).map(b => b.text || '').join('').trim();
-  const clean = text.replace(/^```json?\s*|```$/g, '').trim();
-  const parsed = JSON.parse(clean);
+  // Extract the array by its brackets rather than anchoring to the string's
+  // start/end — at temperature 1 the model occasionally adds a bit of prose
+  // or fences it differently despite being told not to, and a strict anchor
+  // fails the whole parse over a few stray words.
+  const start = text.indexOf('[');
+  const end = text.lastIndexOf(']');
+  if (start === -1 || end === -1 || end < start) {
+    throw new Error(`No JSON array found in swap response: ${text.slice(0, 200)}`);
+  }
+  const parsed = JSON.parse(text.slice(start, end + 1));
   return Array.isArray(parsed) ? parsed : [parsed];
 }
 

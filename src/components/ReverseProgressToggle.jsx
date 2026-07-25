@@ -1,19 +1,16 @@
 export default function ReverseProgressToggle({ value, onChange }) {
   return (
-    <button
-      type="button"
-      className="modal-btn secondary"
-      style={{
-        width: '100%',
-        fontSize: 'var(--fs-xs)',
-        letterSpacing: '0.5px',
-        textTransform: 'none',
-        fontWeight: 400,
-        ...(value ? { background: 'var(--accent)', color: '#080810' } : {}),
-      }}
-      onClick={() => onChange(!value)}
+    <label
+      title="Less weight = stronger (e.g. assisted pull-ups)"
+      style={{ display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer', flexShrink: 0 }}
     >
-      {value ? '✓ ' : ''}⬇️ Less weight = stronger (assisted exercises)
-    </button>
+      <input
+        type="checkbox"
+        checked={value}
+        onChange={e => onChange(e.target.checked)}
+        style={{ width: '16px', height: '16px', accentColor: 'var(--accent)', cursor: 'pointer' }}
+      />
+      <span className="modal-label" style={{ textTransform: 'none', letterSpacing: 0 }}>Assisted</span>
+    </label>
   );
 }
