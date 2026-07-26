@@ -116,8 +116,15 @@ function Chart({ data, unit, reverseProgress }) {
         {data.map((d, i) => {
           const x = px(i);
           const y = py(d.value);
-          // Alternate label above/below to avoid overlap when points are close
-          const labelY = i % 2 === 0 ? y - 10 : y + 18;
+          // Alternate above/below by default (keeps adjacent labels from
+          // overlapping each other), but a "below" placement is only used if
+          // it actually clears the date-axis row beneath it — otherwise fall
+          // back to "above", regardless of how low this point sits in the
+          // chart. Index-based alternation alone let a low point's label land
+          // right on top of its own date tick.
+          const belowY = y + 18;
+          const clearsAxis = (PAD.top + IH + 20) - belowY >= 12;
+          const labelY = (i % 2 !== 0 && clearsAxis) ? belowY : y - 10;
           return (
             <g key={i}>
               <circle cx={x} cy={y} r="5" fill="#4dffaa" />
