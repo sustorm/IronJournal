@@ -23,3 +23,39 @@ export function sortSessionsByWeek(sessions) {
     (a.weekKey || '').localeCompare(b.weekKey || '') || (new Date(a.date) - new Date(b.date))
   );
 }
+
+// The "last weight you lifted" pre-fill has always lived only in local
+// device storage (setData/ij_sets4), never synced to Supabase — so it's
+// wiped by anything that clears local storage (browser data clear, iOS
+// treating a re-added home-screen icon as a fresh storage bucket, a new
+// device, etc.), even though the actual session history is completely
+// safe in the cloud. This rebuilds any MISSING local entries from that
+// durable history so the feature self-heals instead of just staying
+// blank. Matches exercises by name (stable across id changes from a
+// swap) and never overwrites setData that already has real content.
+export function backfillSetDataFromHistory(program, sessions, existingSetData) {
+  const next = { ...existingSetData };
+  (program?.days || []).forEach(day => {
+    const daySets = { ...(next[day.id] || {}) };
+    let changed = false;
+    (day.exercises || []).forEach(ex => {
+      const existing = daySets[ex.id];
+      const hasRealData = existing?.some(r => r.weight !== '' || r.reps > 0);
+      if (hasRealData) return;
+      if (ex.logType === 'duration') return; // never carry duration forward — see saveSession
+      const matches = sessions.filter(s => (s.exercises || []).some(e => e.name === ex.name));
+      if (!matches.length) return;
+      const mostRecent = sortSessionsByWeek(matches).at(-1);
+      const exRef = mostRecent.exercises.find(e => e.name === ex.name);
+      const lastRows = mostRecent.sets?.[exRef.id];
+      if (!lastRows?.length) return;
+      daySets[ex.id] = Array.from({ length: ex.sets }, (_, i) => ({
+        weight: lastRows[i]?.weight ?? lastRows.at(-1).weight ?? '',
+        reps: 0,
+      }));
+      changed = true;
+    });
+    if (changed) next[day.id] = daySets;
+  });
+  return next;
+}

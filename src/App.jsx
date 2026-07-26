@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { DEFAULT_PROGRAM, DAY_COLORS } from './lib/constants.js';
-import { dc, uid, duid, weekKey, getExSets } from './lib/helpers.js';
+import { dc, uid, duid, weekKey, getExSets, backfillSetDataFromHistory } from './lib/helpers.js';
 import { storage } from './lib/storage.js';
 import { sb } from './lib/supabase.js';
 import { isDebugMode, DEBUG_SESSIONS } from './lib/debug.js';
@@ -53,10 +53,17 @@ export default function App() {
     }
 
     async function load() {
+      // Read straight from storage rather than the program/sessions state
+      // variables — equivalent at mount time (that's exactly what their own
+      // useState initializers read), but avoids this mount-only effect
+      // "depending on" state it deliberately doesn't want to react to.
+      let finalProgram = storage.getProgram() || dc(DEFAULT_PROGRAM);
+      let finalSessions = storage.getSessions();
       try {
         const { data: progRow, error: pe } = await sb
           .from('program').select('data').eq('id', 'singleton').maybeSingle();
         if (!pe && progRow?.data) {
+          finalProgram = progRow.data;
           setProgram(progRow.data);
           storage.setProgram(progRow.data);
           setCurrentDayId(progRow.data.days[0]?.id || null);
@@ -69,9 +76,17 @@ export default function App() {
             date: r.date, time: r.time, weekKey: r.week_key,
             sets: r.sets, exercises: r.exercises,
           }));
+          finalSessions = mapped;
           setSessions(mapped);
           storage.setSessions(mapped);
         }
+        // Self-heal the "last weight" pre-fill from durable session history
+        // whenever local storage is missing it (cleared, a fresh device, or
+        // iOS treating a re-added home-screen icon as a new storage bucket)
+        // — this data was never itself synced to Supabase, only sessions are.
+        const backfilled = backfillSetDataFromHistory(finalProgram, finalSessions, storage.getSets());
+        setSetData(backfilled);
+        storage.setSets(backfilled);
         const { data: memRow, error: me } = await sb
           .from('coach_memory').select('notes').eq('id', 'singleton').maybeSingle();
         if (!me && memRow?.notes != null) {
