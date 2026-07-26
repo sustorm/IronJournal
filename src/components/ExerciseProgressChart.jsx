@@ -1,13 +1,11 @@
 import { useState, useMemo } from 'react';
+import { sortSessionsByWeek } from '../lib/helpers.js';
 
 // Computes total volume per session for the selected exercise, chronological order.
 // Weight exercises: sum(weight x reps) across sets. Duration exercises: sum(seconds)
 // across sets, since a "reps" multiplier doesn't apply to a time-based hold.
 function computeData(sessions, exerciseName, logType) {
-  return [...sessions]
-    // Sort explicitly rather than trust the incoming array's order — it's
-    // newest-first in production, but that isn't guaranteed everywhere.
-    .sort((a, b) => (a.weekKey || '').localeCompare(b.weekKey || '') || (new Date(a.date) - new Date(b.date)))
+  return sortSessionsByWeek(sessions)
     .reduce((acc, sess) => {
       const exRef = (sess.exercises || []).find(e => e.name === exerciseName);
       if (!exRef) return acc;

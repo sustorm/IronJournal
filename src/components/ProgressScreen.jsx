@@ -4,6 +4,7 @@ import SessionDetailModal from './SessionDetailModal.jsx';
 import QuarterlyReflectionModal from './QuarterlyReflectionModal.jsx';
 import { storage } from '../lib/storage.js';
 import { getProgressTake, getQuarterlyReflection } from '../lib/coach.js';
+import { sortSessionsByWeek } from '../lib/helpers.js';
 
 const REFLECTION_INTERVAL_DAYS = 90;
 const REFLECTION_SNOOZE_DAYS = 7;
@@ -37,9 +38,9 @@ function buildReflectionSummary(sessions, exerciseLogTypes, exerciseReverseProgr
       perExercise[exRef.name].push({ date: sess.date, weekKey: sess.weekKey, value });
     });
   });
-  Object.values(perExercise).forEach(arr =>
-    arr.sort((a, b) => (a.weekKey || '').localeCompare(b.weekKey || '') || (new Date(a.date) - new Date(b.date)))
-  );
+  Object.keys(perExercise).forEach(name => {
+    perExercise[name] = sortSessionsByWeek(perExercise[name]);
+  });
 
   const avgPerWeek = weekKeys.size ? (inPeriod.length / weekKeys.size).toFixed(1) : '0';
   let summary = `Period: ${periodStart.toLocaleDateString()} to ${new Date().toLocaleDateString()}\n`;
@@ -79,10 +80,7 @@ function ProgressScreen({ sessions, program, onDeleteSession, memory, reflection
     return { exerciseLogTypes: logTypes, exerciseReverseProgress: reverse };
   }, [program]);
 
-  const sortedByWeek = useMemo(
-    () => [...sessions].sort((a, b) => (a.weekKey || '').localeCompare(b.weekKey || '')),
-    [sessions]
-  );
+  const sortedByWeek = useMemo(() => sortSessionsByWeek(sessions), [sessions]);
 
   const reflectionDue = useMemo(() => {
     if (!sessions.length) return false;

@@ -13,3 +13,13 @@ export function getExSets(setData, dayId, exId, exercise) {
   return setData?.[dayId]?.[exId]
     ?? Array.from({ length: exercise.sets }, () => ({ weight: '', reps: 0 }));
 }
+
+// Sorts sessions chronologically by weekKey (a reliable YYYY-MM-DD string),
+// falling back to the locale date string as a same-week tiebreaker. Never
+// trust an incoming sessions array's own order — it's newest-first in
+// production but that isn't guaranteed everywhere (e.g. debug fixtures).
+export function sortSessionsByWeek(sessions) {
+  return [...sessions].sort((a, b) =>
+    (a.weekKey || '').localeCompare(b.weekKey || '') || (new Date(a.date) - new Date(b.date))
+  );
+}
