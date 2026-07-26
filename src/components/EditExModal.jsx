@@ -173,7 +173,7 @@ export default function EditExModal({ open, exercise, day, allDays, onClose, onS
                       <span style={{ color: 'var(--muted)' }}>{expanded ? '▾' : '▸'}</span>
                     </button>
                     {expanded && (
-                      <div style={{ padding: '0 14px 14px' }}>
+                      <div style={{ padding: '10px 14px 14px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
                         <div className="modal-sub" style={{ color: 'var(--accent)' }}>
                           {s.sets}×{s.reps}{s.logType === 'duration' ? ' sec' : ''}{s.note ? ` · ${s.note}` : ''}
                         </div>
@@ -182,7 +182,7 @@ export default function EditExModal({ open, exercise, day, allDays, onClose, onS
                           href={demoUrl(s.name)}
                           target="_blank"
                           rel="noopener noreferrer"
-                          style={{ display: 'inline-block', marginTop: '8px', fontSize: 'var(--fs-xs)', color: 'var(--accent)', textDecoration: 'none' }}
+                          style={{ display: 'inline-block', fontSize: 'var(--fs-xs)', color: 'var(--accent)', textDecoration: 'none' }}
                         >
                           ▶ Watch a demo
                         </a>
