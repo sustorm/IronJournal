@@ -148,14 +148,18 @@ export default function EditExModal({ open, exercise, day, allDays, onClose, onS
             <div className="modal-sub">
               Replacing: {exercise.name} — {exercise.sets}×{exercise.reps}{exercise.logType === 'duration' ? ' sec' : ''}
             </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+            {/* This is the ONLY scrolling region in this view — the confirm
+                button below lives outside it in a pinned footer, so it's
+                always on-screen regardless of device height, safe-area
+                insets, or how tall an expanded row's content gets. */}
+            <div style={{ flex: '1 1 auto', minHeight: 0, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '8px' }}>
               {suggestions.map((s, i) => {
                 const expanded = expandedIdx === i;
                 return (
                   <div
                     key={i}
                     ref={el => (rowRefs.current[i] = el)}
-                    style={{ border: '1px solid var(--border)', borderRadius: '10px', overflow: 'hidden' }}
+                    style={{ border: '1px solid var(--border)', borderRadius: '10px', overflow: 'hidden', flexShrink: 0 }}
                   >
                     <button
                       onClick={() => setExpandedIdx(expanded ? null : i)}
@@ -182,25 +186,29 @@ export default function EditExModal({ open, exercise, day, allDays, onClose, onS
                         >
                           ▶ Watch a demo
                         </a>
-                        <button
-                          className="modal-btn primary"
-                          style={{ width: '100%', marginTop: '10px' }}
-                          onClick={() => handleConfirmSwap(s)}
-                        >
-                          Swap in this exercise
-                        </button>
                       </div>
                     )}
                   </div>
                 );
               })}
             </div>
-            <button className="modal-btn secondary" style={{ width: '100%' }} onClick={fetchSuggestions}>
-              🔄 More options
-            </button>
-            <button className="modal-btn secondary" style={{ width: '100%' }} onClick={() => { setView('edit'); setSuggestions(null); setExpandedIdx(null); }}>
-              Cancel
-            </button>
+            <div style={{ flexShrink: 0, display: 'flex', flexDirection: 'column', gap: '8px', paddingTop: '2px' }}>
+              {expandedIdx !== null && (
+                <button
+                  className="modal-btn primary"
+                  style={{ width: '100%' }}
+                  onClick={() => handleConfirmSwap(suggestions[expandedIdx])}
+                >
+                  Swap in {suggestions[expandedIdx].name}
+                </button>
+              )}
+              <button className="modal-btn secondary" style={{ width: '100%' }} onClick={fetchSuggestions}>
+                🔄 More options
+              </button>
+              <button className="modal-btn secondary" style={{ width: '100%' }} onClick={() => { setView('edit'); setSuggestions(null); setExpandedIdx(null); }}>
+                Cancel
+              </button>
+            </div>
           </>
         )}
       </div>
