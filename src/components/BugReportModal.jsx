@@ -1,7 +1,9 @@
 import { useRef, useState, useEffect } from 'react';
 import { submitBugReport, copyPayloadToClipboard } from '../lib/bugReport.js';
+import { useBodyScrollLock } from '../hooks/useBodyScrollLock.js';
 
 export default function BugReportModal({ open, onClose, showToast }) {
+  useBodyScrollLock(open);
   const descRef = useRef(null);
   const [sending, setSending] = useState(false);
 

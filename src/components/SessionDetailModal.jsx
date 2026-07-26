@@ -1,3 +1,5 @@
+import { useBodyScrollLock } from '../hooks/useBodyScrollLock.js';
+
 function ExerciseRows({ ex, session, isDuration }) {
   const rows = (session.sets?.[ex.id] || [])
     .filter(r => isDuration ? (parseFloat(r.weight) || 0) > 0 : r.reps > 0);
@@ -27,6 +29,7 @@ function ExerciseRows({ ex, session, isDuration }) {
 
 export default function SessionDetailModal({ session, exerciseLogTypes, onClose }) {
   const open = !!session;
+  useBodyScrollLock(open);
 
   function handleOverlayClick(e) {
     if (e.target === e.currentTarget) onClose();

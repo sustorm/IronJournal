@@ -5,6 +5,7 @@ import QuarterlyReflectionModal from './QuarterlyReflectionModal.jsx';
 import { storage } from '../lib/storage.js';
 import { getProgressTake, getQuarterlyReflection } from '../lib/coach.js';
 import { sortSessionsByWeek } from '../lib/helpers.js';
+import { useBodyScrollLock } from '../hooks/useBodyScrollLock.js';
 
 const REFLECTION_INTERVAL_DAYS = 90;
 const REFLECTION_SNOOZE_DAYS = 7;
@@ -57,6 +58,7 @@ function buildReflectionSummary(sessions, exerciseLogTypes, exerciseReverseProgr
 function ProgressScreen({ sessions, program, onDeleteSession, memory, reflection, onReflectionUpdate }) {
   const [confirmDelete, setConfirmDelete] = useState(null); // session object to delete
   const [detailSession, setDetailSession] = useState(null); // session object to view
+  useBodyScrollLock(!!confirmDelete); // SessionDetailModal locks its own separately
   const longPressTimer = useRef(null);
   const longPressFiredRef = useRef(false);
   const touchMovedRef = useRef(false);

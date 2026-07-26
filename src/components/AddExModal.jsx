@@ -1,8 +1,10 @@
 import { useRef, useEffect, useState } from 'react';
 import LogTypeToggle from './LogTypeToggle.jsx';
 import ReverseProgressToggle from './ReverseProgressToggle.jsx';
+import { useBodyScrollLock } from '../hooks/useBodyScrollLock.js';
 
 export default function AddExModal({ open, onClose, onConfirm }) {
+  useBodyScrollLock(open);
   const nameRef = useRef(null);
   const setsRef = useRef(null);
   const repsRef = useRef(null);

@@ -2,12 +2,14 @@ import { useEffect, useRef, useState } from 'react';
 import { suggestExerciseSwap } from '../lib/coach.js';
 import LogTypeToggle from './LogTypeToggle.jsx';
 import ReverseProgressToggle from './ReverseProgressToggle.jsx';
+import { useBodyScrollLock } from '../hooks/useBodyScrollLock.js';
 
 function demoUrl(name) {
   return `https://www.youtube.com/results?search_query=${encodeURIComponent(`${name} exercise form tutorial`)}`;
 }
 
 export default function EditExModal({ open, exercise, day, allDays, onClose, onSave, onDelete, onSwap }) {
+  useBodyScrollLock(open);
   const nameRef = useRef(null);
   const setsRef = useRef(null);
   const repsRef = useRef(null);

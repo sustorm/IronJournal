@@ -1,9 +1,13 @@
+import { useBodyScrollLock } from '../hooks/useBodyScrollLock.js';
+
 function formatDate(iso) {
   if (!iso) return '';
   return new Date(iso).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
 }
 
 export default function QuarterlyReflectionModal({ open, status, text, periodStart, periodEnd, onGenerate, onClose }) {
+  useBodyScrollLock(open);
+
   function handleOverlayClick(e) {
     if (e.target === e.currentTarget) onClose();
   }
