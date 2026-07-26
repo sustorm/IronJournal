@@ -1,0 +1,13 @@
+{
+  "name": "Iron Journal",
+  "short_name": "Iron Journal",
+  "description": "Personal strength training log and AI coach",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#080810",
+  "theme_color": "#080810",
+  "icons": [
+    { "src": "/apple-touch-icon.png", "sizes": "180x180", "type": "image/png" },
+    { "src": "/icon-512.png", "sizes": "512x512", "type": "image/png" }
+  ]
+}
