@@ -1,4 +1,4 @@
-import { useRef, useEffect, useCallback } from 'react';
+import { useRef, useEffect } from 'react';
 
 // Drag-to-reorder for a single exercise list.
 // Mirrors the vanilla JS logic: 300ms long-press to arm, movement threshold before commit.
