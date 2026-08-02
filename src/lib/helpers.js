@@ -33,6 +33,37 @@ export function sortSessionsByWeek(sessions) {
 // durable history so the feature self-heals instead of just staying
 // blank. Matches exercises by name (stable across id changes from a
 // swap) and never overwrites setData that already has real content.
+// For assisted (reverseProgress) exercises, less assistance weight means more
+// strength, but more reps also means more strength — plotting raw weight x
+// reps volume pits those two signals against each other (less assist + more
+// reps can raise "volume" even though the lifter clearly got stronger). This
+// converts logged assistance weight into effective load lifted, anchored to
+// bodyweight if known (else the heaviest assistance ever logged for this
+// exercise, so it's at least self-consistent), so less assistance and more
+// reps both push the number the same direction: up is always "stronger",
+// same as every other exercise.
+export function assistAnchor(sessions, exerciseName, bodyweight) {
+  if (bodyweight) return bodyweight;
+  let max = 0;
+  sessions.forEach(s => {
+    const exRef = (s.exercises || []).find(e => e.name === exerciseName);
+    if (!exRef) return;
+    (s.sets?.[exRef.id] || []).forEach(r => {
+      const w = parseFloat(r.weight);
+      if (!isNaN(w) && w > max) max = w;
+    });
+  });
+  return max;
+}
+
+export function assistedEffectiveValue(rows, anchor) {
+  return rows.reduce((sum, r) => {
+    const w = parseFloat(r.weight);
+    if (isNaN(w)) return sum;
+    return sum + Math.max(0, anchor - w) * (r.reps || 0);
+  }, 0);
+}
+
 export function backfillSetDataFromHistory(program, sessions, existingSetData) {
   const next = { ...existingSetData };
   (program?.days || []).forEach(day => {

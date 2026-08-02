@@ -154,6 +154,10 @@ export default function App() {
       .then(({ error }) => { if (error) console.warn('coach memory sync failed:', error.message); });
   }
 
+  function updateBodyweight(bodyweight) {
+    saveProgramDebounced({ ...program, bodyweight });
+  }
+
   function saveReflection(next) {
     setReflection(next);
     storage.setReflection(next);
@@ -647,6 +651,7 @@ export default function App() {
             memory={coachMemory}
             reflection={reflection}
             onReflectionUpdate={saveReflection}
+            onBodyweightUpdate={updateBodyweight}
           />
         </div>
       )}

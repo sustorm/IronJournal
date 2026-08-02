@@ -1,10 +1,12 @@
 import { useState, useMemo } from 'react';
-import { sortSessionsByWeek } from '../lib/helpers.js';
+import { sortSessionsByWeek, assistAnchor, assistedEffectiveValue } from '../lib/helpers.js';
 
 // Computes total volume per session for the selected exercise, chronological order.
 // Weight exercises: sum(weight x reps) across sets. Duration exercises: sum(seconds)
-// across sets, since a "reps" multiplier doesn't apply to a time-based hold.
-function computeData(sessions, exerciseName, logType) {
+// across sets, since a "reps" multiplier doesn't apply to a time-based hold. Assisted
+// exercises use effective load (see assistedEffectiveValue) instead of raw volume, so
+// the resulting number is always "higher is stronger" like everything else.
+function computeData(sessions, exerciseName, logType, reverseProgress, anchor) {
   return sortSessionsByWeek(sessions)
     .reduce((acc, sess) => {
       const exRef = (sess.exercises || []).find(e => e.name === exerciseName);
@@ -12,7 +14,9 @@ function computeData(sessions, exerciseName, logType) {
       const rows = sess.sets?.[exRef.id] || [];
       const value = logType === 'duration'
         ? rows.reduce((s, r) => s + (parseFloat(r.weight) || 0), 0)
-        : rows.reduce((s, r) => s + (parseFloat(r.weight) || 0) * r.reps, 0);
+        : reverseProgress
+          ? assistedEffectiveValue(rows, anchor)
+          : rows.reduce((s, r) => s + (parseFloat(r.weight) || 0) * r.reps, 0);
       if (!value) return acc;
       acc.push({ label: sess.date, value });
       return acc;
@@ -26,7 +30,56 @@ const PAD = { top: 28, right: 16, bottom: 36, left: 16 };
 const IW = VB_W - PAD.left - PAD.right;
 const IH = VB_H - PAD.top - PAD.bottom;
 
-function Chart({ data, unit, reverseProgress }) {
+// Keyed by bodyweight at the call site so an external change (e.g. loaded
+// from Supabase after mount) remounts this with a fresh initial value,
+// instead of syncing local state to a prop via an effect.
+function BodyweightEditor({ bodyweight, onSave }) {
+  const [value, setValue] = useState(bodyweight ?? '');
+  const [editing, setEditing] = useState(false);
+
+  function commit() {
+    setEditing(false);
+    const n = parseFloat(value);
+    if (!isNaN(n) && n > 0 && n !== bodyweight) onSave(n);
+    else setValue(bodyweight ?? '');
+  }
+
+  if (!editing) {
+    return (
+      <button
+        onClick={() => setEditing(true)}
+        style={{
+          background: 'none', border: 'none', padding: 0, cursor: 'pointer',
+          color: 'var(--accent)', fontSize: 'var(--fs-xs)', fontFamily: "'DM Mono', monospace",
+          textDecoration: 'underline', textUnderlineOffset: '2px',
+        }}
+      >
+        {bodyweight ? `Bodyweight: ${bodyweight} lbs (edit)` : 'Set your bodyweight for more accurate tracking'}
+      </button>
+    );
+  }
+  return (
+    <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+      <input
+        type="number"
+        inputMode="decimal"
+        autoFocus
+        value={value}
+        onChange={e => setValue(e.target.value)}
+        onBlur={commit}
+        onKeyDown={e => { if (e.key === 'Enter') e.target.blur(); }}
+        style={{
+          width: '60px', background: 'var(--bg)', border: '1px solid var(--border)',
+          borderRadius: '6px', color: 'var(--text)', fontFamily: "'DM Mono', monospace",
+          fontSize: 'var(--fs-xs)', padding: '4px 6px', outline: 'none',
+        }}
+      />
+      <span style={{ fontSize: 'var(--fs-xs)', color: 'var(--muted)' }}>lbs</span>
+    </span>
+  );
+}
+
+function Chart({ data, unit, reverseProgress, bodyweight, onBodyweightUpdate }) {
   if (data.length < 2) {
     return (
       <div style={{ padding: '12px 0 4px', color: 'var(--muted)', fontSize: 'var(--fs-sm)' }}>
@@ -59,18 +112,20 @@ function Chart({ data, unit, reverseProgress }) {
   const first = data[0].value;
   const last = data[n - 1].value;
   const delta = last - first;
-  // Arrow always reflects the actual numeric direction; only the color (good
-  // vs. bad) flips for reverse-progress exercises, where less is more.
-  const improving = reverseProgress ? delta < 0 : delta > 0;
-  const declining = reverseProgress ? delta > 0 : delta < 0;
+  // "value" is already transformed into effective load for assisted exercises
+  // (see assistedEffectiveValue), so up is always "stronger" — no more sign
+  // flipping needed here.
+  const improving = delta > 0;
+  const declining = delta < 0;
   const trendColor = improving ? '#4dffaa' : declining ? '#ff5566' : '#7878a0';
   const trendSymbol = delta > 0 ? '↑' : delta < 0 ? '↓' : '→';
 
   return (
     <div>
       {reverseProgress && (
-        <div style={{ fontSize: 'var(--fs-xs)', color: 'var(--muted)', marginBottom: '4px' }}>
-          Assisted — less weight means stronger
+        <div style={{ fontSize: 'var(--fs-xs)', color: 'var(--muted)', marginBottom: '4px', display: 'flex', flexDirection: 'column', gap: '3px' }}>
+          <span>Assisted — showing effective load, so higher is still stronger</span>
+          <BodyweightEditor key={bodyweight ?? 'unset'} bodyweight={bodyweight} onSave={onBodyweightUpdate} />
         </div>
       )}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: '8px' }}>
@@ -155,7 +210,7 @@ function Chart({ data, unit, reverseProgress }) {
   );
 }
 
-export default function ExerciseProgressChart({ sessions, exerciseLogTypes, exerciseReverseProgress }) {
+export default function ExerciseProgressChart({ sessions, exerciseLogTypes, exerciseReverseProgress, bodyweight, onBodyweightUpdate }) {
   // Only offer exercises with at least 2 logged entries — anything with
   // fewer can't show a trend anyway (see Chart's own "need 2 sessions" state).
   const exercises = useMemo(() => {
@@ -177,12 +232,17 @@ export default function ExerciseProgressChart({ sessions, exerciseLogTypes, exer
   const [selected, setSelected] = useState(() => exercises[0] || '');
 
   const isDuration = exerciseLogTypes?.[selected] === 'duration';
-  const unit = isDuration ? 'sec' : 'lbs';
   const reverseProgress = !isDuration && !!exerciseReverseProgress?.[selected];
+  const unit = isDuration ? 'sec' : reverseProgress ? 'eff. lbs' : 'lbs';
+
+  const anchor = useMemo(
+    () => (reverseProgress ? assistAnchor(sessions, selected, bodyweight) : null),
+    [sessions, selected, bodyweight, reverseProgress]
+  );
 
   const data = useMemo(
-    () => computeData(sessions, selected, exerciseLogTypes?.[selected]),
-    [sessions, selected, exerciseLogTypes]
+    () => computeData(sessions, selected, exerciseLogTypes?.[selected], reverseProgress, anchor),
+    [sessions, selected, exerciseLogTypes, reverseProgress, anchor]
   );
 
   if (!exercises.length) return null;
@@ -225,7 +285,7 @@ export default function ExerciseProgressChart({ sessions, exerciseLogTypes, exer
             lineHeight: 1,
           }}>▾</span>
         </div>
-        <Chart data={data} unit={unit} reverseProgress={reverseProgress} />
+        <Chart data={data} unit={unit} reverseProgress={reverseProgress} bodyweight={bodyweight} onBodyweightUpdate={onBodyweightUpdate} />
       </div>
     </div>
   );

@@ -4,7 +4,7 @@ import SessionDetailModal from './SessionDetailModal.jsx';
 import QuarterlyReflectionModal from './QuarterlyReflectionModal.jsx';
 import { storage } from '../lib/storage.js';
 import { getProgressTake, getQuarterlyReflection } from '../lib/coach.js';
-import { sortSessionsByWeek } from '../lib/helpers.js';
+import { sortSessionsByWeek, assistAnchor, assistedEffectiveValue } from '../lib/helpers.js';
 import { useBodyScrollLock } from '../hooks/useBodyScrollLock.js';
 
 const REFLECTION_INTERVAL_DAYS = 90;
@@ -22,18 +22,28 @@ function daysSince(iso) {
 
 // Total volume per exercise, first vs. last logged value within the period —
 // used as an approximate PR/trend indicator for the reflection, not a single
-// session's snapshot like Coach's Take.
-function buildReflectionSummary(sessions, exerciseLogTypes, exerciseReverseProgress, periodStart) {
+// session's snapshot like Coach's Take. Assisted exercises use effective load
+// (see assistedEffectiveValue) instead of raw volume, so increasing is always
+// "stronger" — same as every other exercise, no special-casing for the AI.
+function buildReflectionSummary(sessions, exerciseLogTypes, exerciseReverseProgress, periodStart, bodyweight) {
   const inPeriod = sessions.filter(s => new Date(s.date) >= periodStart);
   const weekKeys = new Set(inPeriod.map(s => s.weekKey));
+  const anchors = new Map(); // exercise name -> assist anchor, computed once per exercise
   const perExercise = {};
   inPeriod.forEach(sess => {
     (sess.exercises || []).forEach(exRef => {
       const isDuration = exerciseLogTypes[exRef.name] === 'duration';
+      const isAssisted = !isDuration && exerciseReverseProgress[exRef.name];
       const rows = sess.sets?.[exRef.id] || [];
-      const value = isDuration
-        ? rows.reduce((s, r) => s + (parseFloat(r.weight) || 0), 0)
-        : rows.reduce((s, r) => s + (parseFloat(r.weight) || 0) * r.reps, 0);
+      let value;
+      if (isDuration) {
+        value = rows.reduce((s, r) => s + (parseFloat(r.weight) || 0), 0);
+      } else if (isAssisted) {
+        if (!anchors.has(exRef.name)) anchors.set(exRef.name, assistAnchor(sessions, exRef.name, bodyweight));
+        value = assistedEffectiveValue(rows, anchors.get(exRef.name));
+      } else {
+        value = rows.reduce((s, r) => s + (parseFloat(r.weight) || 0) * r.reps, 0);
+      }
       if (!value) return;
       if (!perExercise[exRef.name]) perExercise[exRef.name] = [];
       perExercise[exRef.name].push({ date: sess.date, weekKey: sess.weekKey, value });
@@ -49,13 +59,13 @@ function buildReflectionSummary(sessions, exerciseLogTypes, exerciseReverseProgr
   summary += 'Per-exercise trend (first logged volume this period -> last logged volume this period):\n';
   Object.entries(perExercise).forEach(([name, arr]) => {
     const tag = exerciseReverseProgress[name] ? ' [ASSISTED]' : '';
-    const unit = exerciseLogTypes[name] === 'duration' ? 'sec' : 'lbs (vol)';
+    const unit = exerciseLogTypes[name] === 'duration' ? 'sec' : exerciseReverseProgress[name] ? 'lbs (effective load)' : 'lbs (vol)';
     summary += `${name}${tag}: ${Math.round(arr[0].value)} -> ${Math.round(arr[arr.length - 1].value)} ${unit} (${arr.length} sessions)\n`;
   });
   return summary;
 }
 
-function ProgressScreen({ sessions, program, onDeleteSession, memory, reflection, onReflectionUpdate }) {
+function ProgressScreen({ sessions, program, onDeleteSession, memory, reflection, onReflectionUpdate, onBodyweightUpdate }) {
   const [confirmDelete, setConfirmDelete] = useState(null); // session object to delete
   const [detailSession, setDetailSession] = useState(null); // session object to view
   useBodyScrollLock(!!confirmDelete); // SessionDetailModal locks its own separately
@@ -104,7 +114,7 @@ function ProgressScreen({ sessions, program, onDeleteSession, memory, reflection
     setReflectionStatus('loading');
     try {
       const periodStart = getReflectionPeriodStart();
-      const summary = buildReflectionSummary(sessions, exerciseLogTypes, exerciseReverseProgress, periodStart);
+      const summary = buildReflectionSummary(sessions, exerciseLogTypes, exerciseReverseProgress, periodStart, program?.bodyweight);
       const text = await getQuarterlyReflection(summary, memory);
       onReflectionUpdate({
         lastGeneratedAt: new Date().toISOString(),
@@ -283,6 +293,8 @@ function ProgressScreen({ sessions, program, onDeleteSession, memory, reflection
         sessions={sessions}
         exerciseLogTypes={exerciseLogTypes}
         exerciseReverseProgress={exerciseReverseProgress}
+        bodyweight={program?.bodyweight}
+        onBodyweightUpdate={onBodyweightUpdate}
       />
 
       <div className="progress-section">
