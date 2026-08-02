@@ -92,6 +92,8 @@ function ProgressScreen({ sessions, program, onDeleteSession, memory, reflection
     return !!earliest && daysSince(earliest.date) >= REFLECTION_MIN_HISTORY_DAYS;
   }, [sessions, reflection, sortedByWeek]);
 
+  const isFirstReflection = !reflection?.lastGeneratedAt;
+
   function getReflectionPeriodStart() {
     if (reflection?.lastGeneratedAt) return new Date(reflection.lastGeneratedAt);
     const earliest = sortedByWeek[0];
@@ -212,7 +214,9 @@ function ProgressScreen({ sessions, program, onDeleteSession, memory, reflection
           onClick={() => setReflectionModalOpen(true)}
         >
           <div>
-            <div style={{ fontSize: 'var(--fs-sm)', color: 'var(--text)' }}>🗓️ Ready for a quarterly check-in?</div>
+            <div style={{ fontSize: 'var(--fs-sm)', color: 'var(--text)' }}>
+              🗓️ Ready for {isFirstReflection ? 'your first check-in' : 'a quarterly check-in'}?
+            </div>
             <div style={{ fontSize: 'var(--fs-xs)', color: 'var(--muted)', marginTop: '2px' }}>Tap for a deeper look at your progress</div>
           </div>
           <button

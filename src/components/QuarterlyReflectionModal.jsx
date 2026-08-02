@@ -21,7 +21,10 @@ export default function QuarterlyReflectionModal({ open, status, text, periodSta
         )}
         <div>
           {status === 'loading' && (
-            <div className="typing"><div className="dot" /><div className="dot" /><div className="dot" /></div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--muted)', fontSize: 'var(--fs-sm)' }}>
+              Generating…
+              <div className="typing"><div className="dot" /><div className="dot" /><div className="dot" /></div>
+            </div>
           )}
           {status === 'error' && (
             <div className="hist-empty" style={{ padding: 0 }}>Connection error — please try again.</div>
@@ -38,7 +41,7 @@ export default function QuarterlyReflectionModal({ open, status, text, periodSta
         <div className="modal-btns">
           <button className="modal-btn secondary" onClick={onClose}>Close</button>
           <button className="modal-btn primary" onClick={onGenerate} disabled={status === 'loading'}>
-            {status === 'loading' ? 'Generating…' : text ? '🔄 Regenerate' : 'Generate'}
+            {text ? '🔄 Regenerate' : 'Generate'}
           </button>
         </div>
       </div>
